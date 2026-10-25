@@ -11,14 +11,17 @@ using System.Windows.Threading;
 namespace GearHub {
     internal sealed class FakeSession : IFeatureSession {
         public byte[] Sent; public int Writes;
+        public readonly System.Collections.Generic.List<byte[]> History=new System.Collections.Generic.List<byte[]>();
+        public Action OnWrite;
         public bool Accepted=true;
-        public bool Write(byte[] b){Writes++;Sent=b;return Accepted;}
+        public bool Write(byte[] b){Writes++;Sent=b;History.Add((byte[])b.Clone());if(OnWrite!=null)OnWrite();return Accepted;}
         public void Cancel(){}public void Dispose(){}
     }
     internal static class Tests {
         static int count;
         static void Check(bool ok,string name){if(!ok)throw new Exception("FAIL: "+name);count++;Console.WriteLine("PASS: "+name);}
         static bool Throws(Action fn){try{fn();return false;}catch(Exception){return true;}}
+        static byte[] Hex(string text){return text.Split(' ').Select(x=>Convert.ToByte(x,16)).ToArray();}
         [STAThread] public static int Main(string[] args) {
             try {
                 Check(BatterySample.Parse(new byte[]{3,0,64,1,8}).Level==80,"real captured mouse packet = 80%");
@@ -43,6 +46,34 @@ namespace GearHub {
                     Check(Throws(()=>Protocol.Apply(fake,new Lighting(),cancel.Token))&&fake.Writes==0,"cancelled operation never writes");
                 }
                 fake=new FakeSession {Accepted=false};Check(Throws(()=>Protocol.Apply(fake,new Lighting(),CancellationToken.None)),"device write rejection is reported");
+                var dpi=new DpiScheme();
+                var dpiGolden=Hex("04 32 01 08 08 3f 00 00 12 1b 24 37 49 73 00 00 12 1b 24 37 49 73 00 00 02 ff 00 00 00 ff 00 00 00 ff 00 ff ff ff ff 00 ff 00 ff ff ff ff ff ff ff 01");
+                Check(Protocol.DpiCommand(dpi).SequenceEqual(dpiGolden),"1200 DPI default matches 50-byte vendor command layout");
+                dpi.Values[0]=5200;var high=Protocol.DpiCommand(dpi);
+                Check(high[6]==1&&high[7]==1&&high[8]==59&&high[16]==59,"high DPI uses both multiplier flags and correct sensor register");
+                dpi.Values[0]=10000;high=Protocol.DpiCommand(dpi);Check(high[8]==115&&high[16]==115,"10000 DPI uses doubled 5000 register");
+                dpi.Values[0]=5100;Check(Throws(()=>Protocol.DpiCommand(dpi)),"unrepresentable 5100 is rejected instead of silently rounding");
+                dpi.Values[0]=100;Check(Throws(()=>Protocol.DpiCommand(dpi)),"reject DPI below supported range");
+                Check(Throws(()=>Protocol.DpiCommand(new DpiScheme {Selected=6})),"reject disabled active DPI slot");
+                Check(new[]{125,250,500,1000}.All(rate=>Protocol.PollingCommand(rate).SequenceEqual(new byte[]{6,9,1,(byte)(1000/rate),0,0,0,0,0})),"all four polling rates use standalone 9-byte commands");
+                Check(Throws(()=>Protocol.PollingCommand(2000)),"reject unsupported polling rate");
+                Check(Protocol.ParseDpiStage(new byte[]{3,0,16,2,0})==1,"DPI stage event is distinct from battery");
+                Check(!Protocol.ParseDpiStage(new byte[]{3,0,64,1,8}).HasValue&&!Protocol.ParseDpiStage(new byte[]{3,0,16,9,0}).HasValue,"reject battery and out-of-range stage events");
+                var sensitivity=new SensitivityModel();sensitivity.ObserveStage(1);
+                Check(sensitivity.Hardware.Contains("数值未回读"),"initial hardware event never turns draft DPI into a measured value");
+                sensitivity.Sent(new DpiScheme());sensitivity.ObserveStage(1);sensitivity.InvalidateDevice();sensitivity.ObserveStage(1);
+                Check(sensitivity.Hardware.Contains("数值未回读"),"disconnect discards mapping from last sent scheme");
+                fake=new FakeSession();Protocol.ApplyDpi(fake,new DpiScheme(),CancellationToken.None);
+                Check(fake.History.Count==2&&fake.History[0].SequenceEqual(new byte[]{12,4,1,5})&&fake.History[1].SequenceEqual(dpiGolden),"DPI apply activates profile before writing settings");
+                fake=new FakeSession {Accepted=false};
+                Check(Throws(()=>Protocol.ApplyDpi(fake,new DpiScheme(),CancellationToken.None))&&fake.Writes==1,"failed profile activation stops DPI write");
+                using(var cancel=new CancellationTokenSource()){
+                    fake=new FakeSession {OnWrite=()=>cancel.Cancel()};
+                    Check(Throws(()=>Protocol.ApplyDpi(fake,new DpiScheme(),cancel.Token))&&fake.Writes==1,"cancellation during activation prevents later DPI write");
+                }
+                fake=new FakeSession();Check(Throws(()=>Protocol.ApplyDpi(fake,new DpiScheme {Selected=9},CancellationToken.None))&&fake.Writes==0,"invalid DPI scheme never switches profile");
+                fake=new FakeSession();Protocol.ApplyPolling(fake,500,CancellationToken.None);
+                Check(fake.History.Count==2&&fake.History[0].SequenceEqual(new byte[]{12,4,1,5})&&fake.History[1].SequenceEqual(new byte[]{6,9,1,2,0,0,0,0,0}),"polling apply activates default profile independently of DPI");
                 if(args.Length>0&&args[0]=="--probe"){
                     var devices=Native.Find();foreach(var d in devices)Console.WriteLine(d.Product+" Page="+d.Caps.Page+" Input="+d.Caps.Input+" Feature="+d.Caps.Feature);
                     Check(devices.Exists(d=>d.Caps.Page==0xA&&d.Caps.Input==5),"real mouse battery interface detected");
@@ -56,6 +87,7 @@ namespace GearHub {
                 }
                 if(args.Length>1&&args[0]=="--ui")Ui(args[1]);
                 if(args.Length>1&&args[0]=="--live-lighting")LiveLighting(args[1]);
+                if(args.Length>1&&args[0]=="--live-dpi")LiveDpi(args[1]);
                 Console.WriteLine("TOTAL: "+count+" checks passed");return 0;
             }catch(Exception ex){Console.Error.WriteLine(ex);return 1;}
         }
@@ -73,13 +105,46 @@ namespace GearHub {
                 hub.Model.ColorHex="#46D3FF";hub.Model.Brightness=8;
                 Capture(hub,Path.Combine(output,"gear-lighting-preview.png"));
                 hub.B("ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(hub.Model.Notice.Contains("不会写入"),"preview does not access device writes");
-                hub.Route("Dpi");Check(((TextBlock)hub.Window.FindName("PendingDescription")).Text.Contains("不提供写入"),"DPI page clearly marks unsupported controls");
+                hub.B("FeatureDpi").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(((FrameworkElement)hub.Window.FindName("DpiPage")).Visibility==Visibility.Visible&&hub.Model.ApplyLabel=="应用 DPI 方案","DPI card opens functional sensitivity page");
+                var stages=(ItemsControl)hub.Window.FindName("DpiStages");
+                var item=(ContentPresenter)stages.ItemContainerGenerator.ContainerFromIndex(0);
+                ((RadioButton)VisualTreeHelper.GetChild(item,0)).IsChecked=true;Pump();
+                Check(hub.Model.Sensitivity.SelectedIndex==0&&hub.Model.Sensitivity.EditText=="800","DPI tile selects stage through two-way binding");
+                var dpiBox=(TextBox)hub.Window.FindName("DpiValueBox");dpiBox.Text="5100";Pump();
+                Check(!hub.Model.CanApply&&hub.Model.CanApplyPolling&&hub.Model.Sensitivity.Error.Length>0,"invalid DPI blocks scheme apply but not independent polling");
+                ((Slider)hub.Window.FindName("DpiSlider")).Value=6700;Pump();
+                Check(hub.Model.Sensitivity.EditText=="6800"&&hub.Model.CanApply,"slider quantizes high DPI to supported increments");
+                hub.Model.Sensitivity.Load(new DpiScheme());Pump();Capture(hub,Path.Combine(output,"gear-dpi-preview.png"));
+                hub.B("ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(hub.Model.Notice.Contains("不会写入"),"preview DPI apply never writes hardware");
                 hub.Route("Buttons");Check(((TextBlock)hub.Window.FindName("PendingDescription")).Text.Contains("不提供写入"),"macro page clearly marks unsupported controls");
                 hub.Route("Settings");Capture(hub,Path.Combine(output,"gear-settings-preview.png"));
                 hub.Window.Width=1040;hub.Window.Height=720;hub.Route("Lighting");Pump();
                 var button=hub.B("ApplyButton");Check(button.ActualWidth>=150&&button.ActualHeight>30,"apply remains usable at minimum window size");
+                hub.Route("Dpi");Capture(hub,Path.Combine(output,"gear-dpi-small-preview.png"));
                 hub.Model.HasDevice=false;Check(!hub.Model.CanApply,"disconnected device disables apply");
                 hub.Exit();
+            }
+            app.Shutdown();
+        }
+        // Opt-in live DPI integration test. Installs six DPI stages with 1200 selected.
+        // Polling is sent only when this test is explicitly extended to do so.
+        static void LiveDpi(string output){
+            Directory.CreateDirectory(output);var app=new Application();
+            using(var hub=new Hub(false)){
+                hub.Window.Show();var until=DateTime.UtcNow.AddSeconds(8);
+                while(!hub.Model.HasDevice&&DateTime.UtcNow<until)Pump();
+                Check(hub.Model.HasDevice,"live sensitivity UI detects receiver");
+                hub.Route("Dpi");hub.Model.Sensitivity.Load(new DpiScheme());
+                hub.B("ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                until=DateTime.UtcNow.AddSeconds(6);
+                while(hub.Model.Busy&&DateTime.UtcNow<until)Pump();
+                Check(!hub.Model.Busy&&hub.Model.Sensitivity.Status=="已发送 1200 DPI","live Apply button sends 1200 DPI scheme to receiver");
+                hub.Model.Sensitivity.PollingIndex=2;hub.B("ApplyPollingButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                until=DateTime.UtcNow.AddSeconds(6);while(hub.Model.Busy&&DateTime.UtcNow<until)Pump();
+                Check(!hub.Model.Busy&&hub.Model.Sensitivity.RateStatus=="已发送 500 Hz","live polling button sends 500 Hz independently");
+                Console.WriteLine("LIVE DPI: "+hub.Model.Notice+" / "+hub.Model.Sensitivity.Hardware);
+                Capture(hub,Path.Combine(output,"gear-live-dpi.png"));hub.Exit();
             }
             app.Shutdown();
         }

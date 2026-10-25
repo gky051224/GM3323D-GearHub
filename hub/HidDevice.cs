@@ -80,17 +80,17 @@ namespace GearHub {
         readonly SafeFileHandle handle; readonly IntPtr thread;
         public FeatureSession() {
             DeviceInfo target=Native.Find().Find(d=>d.Caps.Page==0xB && d.Caps.Usage==0 && d.Caps.Feature==132);
-            if (target==null) throw new InvalidOperationException("未找到 GM3323D 灯光接口，请插入无线接收器。");
+            if (target==null) throw new InvalidOperationException("未找到 GM3323D 设置接口，请插入无线接收器。");
             handle=Native.CreateFile(target.Path,0xC0000000,3,IntPtr.Zero,3,0,IntPtr.Zero);
-            if (handle.IsInvalid) throw new InvalidOperationException("灯光接口暂不可用，请关闭原厂设置窗口后重试。");
+            if (handle.IsInvalid) throw new InvalidOperationException("设置接口暂不可用，请关闭原厂设置窗口后重试。");
             thread=Native.OpenThread(1,false,Native.GetCurrentThreadId());
         }
         public bool Write(byte[] bytes) {
-            if(bytes==null||bytes.Length!=13||bytes[0]!=5||bytes[1]!=13)
-                throw new ArgumentException("灯光指令格式不正确。");
+            if(bytes==null||!((bytes.Length==13&&bytes[0]==5&&bytes[1]==13)||(bytes.Length==50&&bytes[0]==4&&bytes[1]==50)||(bytes.Length==9&&bytes[0]==6&&bytes[1]==9)||(bytes.Length==4&&bytes[0]==12&&bytes[1]==4&&bytes[3]==5))||bytes[2]!=1)
+                throw new ArgumentException("设备设置指令格式不正确。");
             if(Native.HidD_SetFeature(handle,bytes,bytes.Length))return true;
             int error=Marshal.GetLastWin32Error();
-            throw new InvalidOperationException("灯光发送失败（错误 "+error+"），请唤醒鼠标后重试。");
+            throw new InvalidOperationException("设置发送失败（错误 "+error+"），请唤醒鼠标后重试。");
         }
         public void Cancel() {if (thread!=IntPtr.Zero) Native.CancelSynchronousIo(thread);}
         public void Dispose() {handle.Dispose();if(thread!=IntPtr.Zero)Native.CloseHandle(thread);}
@@ -99,6 +99,7 @@ namespace GearHub {
     internal sealed class BatteryMonitor : IDisposable {
         readonly CancellationTokenSource stop=new CancellationTokenSource();
         public event Action<BatterySample,string> Updated;
+        public event Action<int> DpiStageChanged;
         public void Start() {new Thread(Work) {IsBackground=true,Name="GM Gear battery"}.Start();}
         void Publish(BatterySample sample,string detail) {var handler=Updated;if(handler!=null)handler(sample,detail);}
         void Work() {
@@ -118,6 +119,8 @@ namespace GearHub {
                                 }
                                 continue;
                             }
+                            int? stage=Protocol.ParseDpiStage(packet);
+                            if(stage.HasValue){var changed=DpiStageChanged;if(changed!=null)changed(stage.Value);continue;}
                             BatterySample sample=BatterySample.Parse(packet);
                             if(!sample.Recognized)continue;
                             last=DateTime.UtcNow;timeoutShown=false;

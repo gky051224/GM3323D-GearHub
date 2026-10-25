@@ -32,6 +32,14 @@
       <Style.Triggers><Trigger Property="Tag" Value="Active"><Setter Property="Background" Value="#202228"/><Setter Property="Foreground" Value="#70DFFF"/><Setter Property="BorderBrush" Value="Transparent"/></Trigger></Style.Triggers>
     </Style>
     <Style x:Key="Muted" TargetType="TextBlock"><Setter Property="Foreground" Value="#A2ADBF"/><Setter Property="FontSize" Value="12"/></Style>
+    <Style x:Key="DpiTile" TargetType="RadioButton">
+      <Setter Property="Cursor" Value="Hand"/><Setter Property="Margin" Value="0,0,8,8"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton"><Border x:Name="Tile" Background="#30343D" BorderBrush="#444A57" BorderThickness="1" CornerRadius="5" Padding="12,10"><ContentPresenter/></Border><ControlTemplate.Triggers>
+        <Trigger Property="IsChecked" Value="True"><Setter TargetName="Tile" Property="Background" Value="#234554"/><Setter TargetName="Tile" Property="BorderBrush" Value="#60D8FF"/></Trigger>
+        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Tile" Property="BorderBrush" Value="#B1DCEA"/></Trigger>
+        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Tile" Property="BorderThickness" Value="2"/></Trigger>
+      </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
     <Style TargetType="TextBox"><Setter Property="Background" Value="#191C22"/><Setter Property="Foreground" Value="#F4F6FA"/><Setter Property="BorderBrush" Value="#485363"/><Setter Property="Padding" Value="12,10"/><Setter Property="CaretBrush" Value="#4FD5FF"/></Style>
     <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#E1E7F0"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="Margin" Value="0,8"/></Style>
     <ControlTemplate x:Key="MouseArt" TargetType="ContentControl">
@@ -77,7 +85,7 @@
       </Button>
       <UniformGrid Columns="3" Margin="0,20,0,0">
        <Button x:Name="FeatureLighting" Margin="0,0,14,0" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#343842"><StackPanel><TextBlock Text="探索灯光效果" FontSize="16"/><TextBlock Text="自定义颜色、灯效与亮度" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="进入灯光配置  →" Foreground="#7EDDF8" FontSize="11"/></StackPanel></Button>
-       <Button x:Name="FeatureDpi" Margin="0,0,14,0" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#30343D"><StackPanel><TextBlock Text="灵敏度 · DPI" FontSize="16"/><TextBlock Text="灵敏度与回报率设置" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="待适配  →" Foreground="#C9B384" FontSize="11"/></StackPanel></Button>
+       <Button x:Name="FeatureDpi" Margin="0,0,14,0" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#30343D"><StackPanel><TextBlock Text="灵敏度 · DPI" FontSize="16"/><TextBlock Text="六档 DPI 与回报率设置" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="配置灵敏度  →" Foreground="#7EDDF8" FontSize="11"/></StackPanel></Button>
        <Button x:Name="FeatureButtons" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#2C3038"><StackPanel><TextBlock Text="按键与宏" FontSize="16"/><TextBlock Text="自定义鼠标按键操作" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="待适配  →" Foreground="#C9B384" FontSize="11"/></StackPanel></Button>
       </UniformGrid>
      </StackPanel>
@@ -104,6 +112,33 @@
       </StackPanel>
       <StackPanel Grid.Column="1" VerticalAlignment="Center"><ContentControl Template="{StaticResource MouseArt}" Height="365" MaxWidth="300"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0"><TextBlock Text="GM3323D" FontSize="14" Foreground="#C3CDDD"/><TextBlock Text="{Binding Battery}" Foreground="#7FE3C6" FontSize="12" Margin="16,2,0,0"/></StackPanel><TextBlock Text="颜色预览 · 应用后更改设备" Style="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Center" Margin="0,11,0,0"/></StackPanel>
      </Grid>
+     <Grid x:Name="DpiPage" Visibility="Collapsed" IsEnabled="{Binding CanEdit}">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <StackPanel>
+       <Grid Margin="0,0,0,15"><TextBlock Text="DPI 档位" FontSize="15" Foreground="#6DE1FF"/><TextBlock Text="{Binding Sensitivity.Status}" Foreground="#A2ADBF" FontSize="11" HorizontalAlignment="Right"/></Grid>
+       <ItemsControl x:Name="DpiStages" ItemsSource="{Binding Sensitivity.Stages}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate>
+        <RadioButton GroupName="DpiStage" IsChecked="{Binding Selected,Mode=TwoWay}" Style="{StaticResource DpiTile}" AutomationProperties.Name="{Binding Name}"><StackPanel><TextBlock Text="{Binding Name}" Foreground="#B6C4D5" FontSize="11"/><TextBlock Text="{Binding Value}" Foreground="#F4F6FA" FontFamily="Segoe UI" FontSize="23" FontWeight="SemiBold" Margin="0,4,0,0"/></StackPanel></RadioButton>
+       </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+       <TextBlock Text="选择一档，调整数值，最后点击应用。" Style="{StaticResource Muted}" Margin="0,5,0,19"/>
+       <TextBlock Text="{Binding Sensitivity.SelectedLabel}" Foreground="#7DDEFF" FontSize="12"/>
+       <StackPanel Orientation="Horizontal" Margin="0,10,0,15"><TextBox x:Name="DpiValueBox" Text="{Binding Sensitivity.EditText,UpdateSourceTrigger=PropertyChanged}" FontFamily="Segoe UI" FontSize="32" Width="172" Padding="12,6" AutomationProperties.Name="选中档位的 DPI 数值"/><TextBlock Text="DPI" Foreground="#A9B6C8" FontFamily="Segoe UI" FontSize="16" VerticalAlignment="Center" Margin="12,0,0,0"/></StackPanel>
+       <Slider x:Name="DpiSlider" Minimum="200" Maximum="10000" Value="{Binding Sensitivity.SliderValue}" TickFrequency="100" IsSnapToTickEnabled="True" SmallChange="100" LargeChange="400" AutomationProperties.Name="调节选中档位 DPI"/>
+       <Grid Margin="0,7,0,10"><TextBlock Text="200" Style="{StaticResource Muted}"/><TextBlock Text="10000" Style="{StaticResource Muted}" HorizontalAlignment="Right"/></Grid>
+       <TextBlock Text="{Binding Sensitivity.Error}" Foreground="#FFB397" FontSize="11" MinHeight="24"/>
+       <TextBlock Text="200–5000：步进 100；更高数值：步进 200。" Style="{StaticResource Muted}" LineHeight="20"/>
+       <Button x:Name="DpiDefaultButton" Content="恢复默认方案" HorizontalAlignment="Left" Padding="12,8" FontSize="11" Margin="0,15,0,0"/>
+      </StackPanel>
+      <StackPanel Grid.Column="2">
+       <ContentControl Template="{StaticResource MouseArt}" Height="185" Margin="0,0,0,12"/>
+       <TextBlock Text="{Binding Sensitivity.Hardware}" Foreground="#9CE3D0" FontSize="11" TextAlignment="Center" Margin="0,0,0,20" MinHeight="32"/>
+       <Border Background="#2D313A" Padding="18" CornerRadius="6"><StackPanel>
+        <TextBlock Text="回报率" FontSize="15"/><TextBlock Text="每秒向电脑发送的位置次数" Style="{StaticResource Muted}" Margin="0,5,0,12"/>
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ComboBox x:Name="PollingRateBox" ItemsSource="{Binding Sensitivity.PollingRates}" SelectedIndex="{Binding Sensitivity.PollingIndex}" AutomationProperties.Name="回报率 Hz"/><Button x:Name="ApplyPollingButton" Grid.Column="1" Content="应用 Hz" IsEnabled="{Binding CanApplyPolling}" Margin="10,0,0,0" Padding="12,8" FontSize="11"/></Grid>
+        <TextBlock Text="{Binding Sensitivity.RateStatus}" Style="{StaticResource Muted}" FontSize="11" Margin="0,9,0,0"/>
+       </StackPanel></Border>
+       <TextBlock Text="使用鼠标的默认配置（第 1 组）。这里显示本机方案，未读取设备当前数值。&#10;应用 DPI 会替换六档数值与档位指示色；回报率单独应用。" Style="{StaticResource Muted}" FontSize="11" LineHeight="20" Margin="0,16,0,0"/>
+      </StackPanel>
+     </Grid>
           <Border x:Name="PendingPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="40">
             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions>
               <StackPanel VerticalAlignment="Center" Margin="0,0,25,0"><TextBlock Text="暂未适配" Foreground="#E6C17A" FontSize="12"/><TextBlock x:Name="PendingTitle" FontSize="27" FontWeight="SemiBold" Margin="0,14,0,15"/><TextBlock x:Name="PendingDescription" Foreground="#B9C3D2" LineHeight="25"/><TextBlock Text="目前仍需使用原厂软件调整这些设置。&#10;当前鼠标配置不会受到影响。" Style="{StaticResource Muted}" Margin="0,25,0,0" LineHeight="23"/><Button x:Name="PendingBack" Content="返回设备主页" HorizontalAlignment="Left" Margin="0,28,0,0"/></StackPanel>
@@ -121,7 +156,7 @@
           </StackPanel></Border>
           <Border x:Name="AboutPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="34"><StackPanel MaxWidth="650" HorizontalAlignment="Left">
             <TextBlock Text="GM GEAR" FontFamily="Segoe UI" FontSize="40" FontWeight="Bold" Foreground="#75DFFF"/><TextBlock Text="为 GM3323D 打造的独立外设控制中心" FontSize="16" Margin="0,10,0,25"/>
-            <TextBlock Text="v0.1.2 · Windows 桌面版" Style="{StaticResource Muted}"/>
+            <TextBlock Text="v0.2.0 · Windows 桌面版" Style="{StaticResource Muted}"/>
             <TextBlock Text="灯光和电量实现基于 Evan816Z / GM3323D-MouseLight，按 MIT 许可证二次开发。保留上游源码与版权声明，重做独立界面及 HID 适配层。" Foreground="#BAC5D6" Margin="0,25,0,14" LineHeight="25"/>
             <TextBlock Text="这是独立开发的鼠标控制软件，未与罗技或戴尔关联。" Style="{StaticResource Muted}" LineHeight="23"/>
             <Button x:Name="SourceButton" Content="查看上游项目  ↗" HorizontalAlignment="Left" Margin="0,28,0,0"/>

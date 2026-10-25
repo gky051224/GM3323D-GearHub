@@ -34,6 +34,45 @@ namespace GearHub {
     }
 
     public static class Protocol {
+        // Sensor register encodings indexed by units of 100 DPI, from the device protocol.
+        static readonly byte[] Sensor={0,4,4,6,8,11,13,15,18,20,22,25,27,29,32,34,36,39,41,43,46,48,50,52,55,57,59,62,64,66,69,71,73,76,78,80,83,85,87,90,92,94,97,99,101,104,106,108,111,113,115};
+        public static byte[] DpiCommand(DpiScheme draft){
+            draft.Validate();var packet=new byte[50];
+            packet[0]=4;packet[1]=50;packet[2]=1;packet[3]=8;packet[4]=8;packet[5]=0x3F;
+            for(int i=0;i<draft.Values.Length;i++){
+                int unit=draft.Values[i]/100;
+                if(unit>50){packet[6]|=(byte)(1<<i);packet[7]|=(byte)(1<<i);unit/=2;}
+                packet[8+i]=Sensor[unit];packet[16+i]=Sensor[unit];
+            }
+            packet[24]=(byte)(draft.Selected+1);
+            byte[] colors={255,0,0, 0,255,0, 0,0,255, 0,255,255, 255,255,0, 255,0,255, 255,255,255, 255,255,255};
+            Array.Copy(colors,0,packet,25,colors.Length);packet[49]=1;return packet;
+        }
+        public static byte[] PollingCommand(int rate){
+            if(rate!=125&&rate!=250&&rate!=500&&rate!=1000)throw new ArgumentException("请选择 125、250、500 或 1000 Hz。");
+            return new byte[]{6,9,1,(byte)(1000/rate),0,0,0,0,0};
+        }
+        public static int? ParseDpiStage(byte[] packet){
+            if(packet!=null&&packet.Length==5&&packet[0]==3&&packet[1]==0&&packet[2]==0x10&&packet[3]>=1&&packet[3]<=8&&packet[4]==0)return packet[3]-1;
+            return null;
+        }
+        public static void Send(IFeatureSession session,byte[] packet,CancellationToken cancel){
+            cancel.ThrowIfCancellationRequested();
+            if(!session.Write(packet))throw new InvalidOperationException("设备未接受设置，未确认应用成功。");
+        }
+        public static byte[] DefaultProfileCommand(){return new byte[]{12,4,1,5};}
+        static void SendDefaultProfileSetting(IFeatureSession session,byte[] packet,CancellationToken cancel){
+            Send(session,DefaultProfileCommand(),cancel);
+            // Match the device's configuration activation delay before writing its settings.
+            if(cancel.WaitHandle.WaitOne(550))cancel.ThrowIfCancellationRequested();
+            Send(session,packet,cancel);
+        }
+        public static void ApplyDpi(IFeatureSession session,DpiScheme draft,CancellationToken cancel){
+            byte[] packet=DpiCommand(draft);SendDefaultProfileSetting(session,packet,cancel);
+        }
+        public static void ApplyPolling(IFeatureSession session,int rate,CancellationToken cancel){
+            byte[] packet=PollingCommand(rate);SendDefaultProfileSetting(session,packet,cancel);
+        }
         public static byte[] LightingCommand(Lighting draft) {
             draft.Validate();
             // Report 0x05: length 13, profile 1, mode, effect timing,
@@ -45,8 +84,7 @@ namespace GearHub {
 
         public static void Apply(IFeatureSession session, Lighting draft, CancellationToken cancel) {
             byte[] packet = LightingCommand(draft);
-            cancel.ThrowIfCancellationRequested();
-            if (!session.Write(packet)) throw new InvalidOperationException("设备未接受设置，未确认应用成功。");
+            Send(session,packet,cancel);
         }
     }
 }

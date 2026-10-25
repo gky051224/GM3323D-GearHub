@@ -21,11 +21,13 @@ using Forms=System.Windows.Forms;
 namespace GearHub {
     public sealed class ViewModel : INotifyPropertyChanged {
         public event PropertyChangedEventHandler PropertyChanged;
+        public SensitivityModel Sensitivity {get;private set;}
+        public ViewModel(){Sensitivity=new SensitivityModel();Sensitivity.PropertyChanged+=(s,e)=>{Notify("CanApply");};}
         public Action DraftChanged;
         void Notify(string name) {var fn=PropertyChanged;if(fn!=null)fn(this,new PropertyChangedEventArgs(name));}
         public void All() {Notify("");}
         string header="你的设备",subhead="一个工作空间，掌控你的鼠标。",notice="正在检测 GM3323D 接收器…",connection="正在检测…",battery="—",draftStatus="预览未应用";
-        int? level;bool hasDevice,busy,enabled=true;int modeIndex;double brightness=8,hue=194;string color="#46D3FF";
+        int? level;bool hasDevice,busy,enabled=true,dpiPage;int modeIndex;double brightness=8,hue=194;string color="#46D3FF";
         public string Header {get{return header;}set{header=value;Notify("Header");}}
         public string Subhead {get{return subhead;}set{subhead=value;Notify("Subhead");}}
         public string Notice {get{return notice;}set{notice=value;Notify("Notice");}}
@@ -33,11 +35,13 @@ namespace GearHub {
         public System.Windows.Media.Brush ConnectionBrush {get{return new SolidColorBrush(hasDevice?System.Windows.Media.Color.FromRgb(140,231,206):System.Windows.Media.Color.FromRgb(194,201,213));}}
         public string Battery {get{return battery;}}
         public double BatteryValue {get{return level.HasValue?level.Value:0;}}
-        public bool HasDevice {get{return hasDevice;}set{hasDevice=value;Notify("HasDevice");Notify("CanApply");Notify("ConnectionBrush");}}
-        public bool Busy {get{return busy;}set{busy=value;Notify("CanApply");Notify("CanEdit");Notify("ApplyLabel");}}
+        public bool HasDevice {get{return hasDevice;}set{hasDevice=value;Notify("HasDevice");Notify("CanApply");Notify("CanApplyPolling");Notify("ConnectionBrush");}}
+        public bool Busy {get{return busy;}set{busy=value;Notify("CanApply");Notify("CanApplyPolling");Notify("CanEdit");Notify("ApplyLabel");}}
         public bool CanEdit {get{return !busy;}}
-        public bool CanApply {get{return hasDevice&&!busy&&ValidColor;}}
-        public string ApplyLabel {get{return busy?"正在应用…":"应用到鼠标";}}
+        public bool DpiPage {get{return dpiPage;}set{dpiPage=value;Notify("CanApply");Notify("ApplyLabel");}}
+        public bool CanApply {get{return hasDevice&&!busy&&(dpiPage?Sensitivity.Valid:ValidColor);}}
+        public bool CanApplyPolling {get{return hasDevice&&!busy;}}
+        public string ApplyLabel {get{return busy?"正在应用…":(dpiPage?"应用 DPI 方案":"应用到鼠标");}}
         public string DraftStatus {get{return draftStatus;}set{draftStatus=value;Notify("DraftStatus");}}
         public string[] Modes {get{return new[]{"固定色","呼吸","霓虹","循环呼吸","固定色 · 随 DPI","呼吸 · 随 DPI","流光","跑马灯"};}}
         void Dirty() {DraftStatus="预览未应用";if(DraftChanged!=null)DraftChanged();}
@@ -95,7 +99,7 @@ namespace GearHub {
             Window.Width=Math.Min(1180,SystemParameters.WorkArea.Width-48);
             Window.Height=Math.Min(800,SystemParameters.WorkArea.Height-48);
             Window.MinWidth=Math.Min(1040,Window.Width);Window.MinHeight=Math.Min(720,Window.Height);
-            foreach(string name in new[]{"Home","Lighting","Pending","Settings","About"}) pages[name]=(FrameworkElement)Window.FindName(name+"Page");
+            foreach(string name in new[]{"Home","Lighting","Dpi","Pending","Settings","About"}) pages[name]=(FrameworkElement)Window.FindName(name+"Page");
             foreach(string name in new[]{"Home","Lighting","Dpi","Buttons","Settings","About"}) {
                 string route=name;Button button=B("Nav"+name);nav[name]=button;button.Click+=(s,e)=>Route(route);
             }
@@ -110,8 +114,10 @@ namespace GearHub {
             B("HideButton").Click+=(s,e)=>Window.Hide();
             B("ExitButton").Click+=(s,e)=>Exit();
             B("RefreshButton").Click+=(s,e)=>{operationUntil=DateTime.UtcNow.AddSeconds(10);Model.Notice="正在重新检测，移动鼠标后会更新电量…";Model.SetBattery(null);};
-            B("ApplyButton").Click+=async(s,e)=>await Apply();
-            B("SaveDraftButton").Click+=(s,e)=>SaveDraft();
+            B("ApplyButton").Click+=async(s,e)=>{if(Model.DpiPage)await ApplyDpi();else await Apply();};
+            B("ApplyPollingButton").Click+=async(s,e)=>await ApplyPolling();
+            B("SaveDraftButton").Click+=(s,e)=>{if(Model.DpiPage)SaveSensitivity();else SaveDraft();};
+            B("DpiDefaultButton").Click+=(s,e)=>Model.Sensitivity.Load(new DpiScheme());
             B("PickColor").Click+=(s,e)=>PickColor();
             B("SourceButton").Click+=(s,e)=>Process.Start(new ProcessStartInfo("https://github.com/Evan816Z/GM3323D-MouseLight") {UseShellExecute=true});
             foreach(string name in new[]{"Cyan","Purple","Pink","Orange","Green","White"}) B("Color"+name).Click+=(s,e)=>Model.ColorHex=(string)((Button)s).Tag;
@@ -142,9 +148,13 @@ namespace GearHub {
                     Window.Dispatcher.BeginInvoke(new Action(()=>{
                         if(disposed)return;
                         Model.HasDevice=sample.Online;Model.Connection=detail;Model.SetBattery(sample.Level);
+                        if(!sample.Online)Model.Sensitivity.InvalidateDevice();
                         if(!Model.Busy&&DateTime.UtcNow>operationUntil)Model.Notice=detail+"  ·  "+DateTime.Now.ToString("HH:mm:ss")+" 更新";
                         UpdateTray(sample.Level);
                     }));
+                };
+                monitor.DpiStageChanged+=stage=>{
+                    if(!disposed)Window.Dispatcher.BeginInvoke(new Action(()=>{if(!disposed)Model.Sensitivity.ObserveStage(stage);}));
                 };
                 monitor.Start();
             }
@@ -153,17 +163,18 @@ namespace GearHub {
         internal void Route(string route) {
             foreach(var page in pages.Values)page.Visibility=Visibility.Collapsed;
             foreach(var item in nav)item.Value.Tag=item.Key==route?"Active":null;
-            string pageName=(route=="Dpi"||route=="Buttons")?"Pending":route;
+            string pageName=route=="Buttons"?"Pending":route;Model.DpiPage=route=="Dpi";
             pages[pageName].Visibility=Visibility.Visible;
-            B("ApplyButton").Visibility=route=="Lighting"?Visibility.Visible:Visibility.Collapsed;
-            B("SaveDraftButton").Visibility=route=="Lighting"?Visibility.Visible:Visibility.Collapsed;
+            B("ApplyButton").Visibility=route=="Lighting"||route=="Dpi"?Visibility.Visible:Visibility.Collapsed;
+            B("SaveDraftButton").Visibility=route=="Lighting"||route=="Dpi"?Visibility.Visible:Visibility.Collapsed;
             ((FrameworkElement)Window.FindName("Sidebar")).Visibility=route=="Home"?Visibility.Collapsed:Visibility.Visible;
             if(route=="Home"){Model.Header="桌面";Model.Subhead="默认配置";}
             else if(route=="Lighting"){Model.Header="灯光效果";Model.Subhead="GM3323D  /  LIGHTING";}
-            else if(route=="Dpi"||route=="Buttons") {
-                Model.Header=route=="Dpi"?"灵敏度 · DPI":"按键与宏";Model.Subhead="GM3323D  /  功能适配进度";
-                ((TextBlock)Window.FindName("PendingTitle")).Text=route=="Dpi"?"灵敏度控制正在适配":"自定义操作正在适配";
-                ((TextBlock)Window.FindName("PendingDescription")).Text=route=="Dpi"?"DPI 档位与回报率尚未确认兼容，当前版本不提供写入。":"按键重映射和宏尚未确认兼容，当前版本不提供写入。";
+            else if(route=="Dpi"){Model.Header="灵敏度 · DPI";Model.Subhead="GM3323D  /  SENSITIVITY";}
+            else if(route=="Buttons") {
+                Model.Header="按键与宏";Model.Subhead="GM3323D  /  功能适配进度";
+                ((TextBlock)Window.FindName("PendingTitle")).Text="自定义操作正在适配";
+                ((TextBlock)Window.FindName("PendingDescription")).Text="按键重映射和宏尚未确认兼容，当前版本不提供写入。";
             } else if(route=="Settings"){Model.Header="偏好设置";Model.Subhead="仅作用于 GM GEAR";}
             else {Model.Header="关于";Model.Subhead="独立项目  /  开源协议";}
             Window.Dispatcher.BeginInvoke(new Action(UpdateArtwork),System.Windows.Threading.DispatcherPriority.Loaded);
@@ -213,6 +224,44 @@ namespace GearHub {
               catch(Exception ex){Model.Notice=ex.Message;}
             finally {operationUntil=DateTime.UtcNow.AddSeconds(20);Model.Busy=false;}
         }
+        async Task<bool> SendSetting(Action<IFeatureSession,CancellationToken> send){
+            Model.Busy=true;
+            try{
+                using(var cancel=new CancellationTokenSource(3500)){
+                    await Task.Run(()=>{using(var session=new FeatureSession())using(cancel.Token.Register(session.Cancel))send(session,cancel.Token);});
+                }
+                return true;
+            }catch(OperationCanceledException){Model.Notice="设备响应超时，请唤醒鼠标后重试。";}
+            catch(Exception ex){Model.Notice=ex.Message;}
+            finally{operationUntil=DateTime.UtcNow.AddSeconds(25);Model.Busy=false;}
+            return false;
+        }
+        async Task ApplyDpi(){
+            if(Preview){Model.Notice="界面预览不会写入设备。";return;}
+            if(!Model.CanApply)return;
+            var draft=Model.Sensitivity.Draft();Model.Notice="正在应用 DPI 方案…";
+            if(await SendSetting((session,cancel)=>Protocol.ApplyDpi(session,draft,cancel))){
+                Model.Sensitivity.Sent(draft);Model.Notice="已发送 "+draft.Values[draft.Selected]+" DPI，使用鼠标默认配置（第 1 组）。";
+            }
+        }
+        async Task ApplyPolling(){
+            if(Preview){Model.Notice="界面预览不会写入设备。";return;}
+            if(!Model.CanApplyPolling)return;
+            int rate=Model.Sensitivity.PollingRate;Model.Notice="正在应用回报率…";
+            if(await SendSetting((session,cancel)=>Protocol.ApplyPolling(session,rate,cancel))){Model.Sensitivity.RateStatus="已发送 "+rate+" Hz";Model.Notice="已发送 "+rate+" Hz 回报率。";}
+        }
+        void SaveSensitivity(){
+            operationUntil=DateTime.UtcNow.AddSeconds(15);
+            if(Preview){Model.Notice="界面预览不会保存设置。";return;}
+            if(!Model.Sensitivity.Valid){Model.Notice=Model.Sensitivity.Error;return;}
+            try{
+                var draft=Model.Sensitivity.Draft();
+                using(var key=Registry.CurrentUser.CreateSubKey(RegistryPath+@"\Sensitivity")){
+                    key.SetValue("values",String.Join(",",draft.Values));key.SetValue("selected",draft.Selected);key.SetValue("rate",Model.Sensitivity.PollingIndex);
+                }
+                Model.Sensitivity.Status="本机已保存 · 尚未应用";Model.Notice="DPI 与回报率草稿已保存；启动时不会自动应用。";
+            }catch(Exception ex){Model.Notice="保存失败："+ex.Message;}
+        }
         void SaveDraft() {
             operationUntil=DateTime.UtcNow.AddSeconds(15);
             if(!Model.ValidColor){Model.Notice="请输入有效的 #RRGGBB 颜色。";return;}
@@ -227,6 +276,14 @@ namespace GearHub {
             } catch(Exception ex){Model.Notice="保存失败："+ex.Message;}
         }
         void LoadDraft() {
+            try{using(var key=Registry.CurrentUser.OpenSubKey(RegistryPath+@"\Sensitivity")){
+                if(key!=null){
+                    string[] saved=Convert.ToString(key.GetValue("values","")).Split(',');
+                    int[] values=Array.ConvertAll(saved,value=>Int32.Parse(value,System.Globalization.CultureInfo.InvariantCulture));
+                    Model.Sensitivity.Load(new DpiScheme {Values=values,Selected=Convert.ToInt32(key.GetValue("selected",1))});
+                    Model.Sensitivity.PollingIndex=Convert.ToInt32(key.GetValue("rate",2));
+                }
+            }}catch(Exception){Model.Sensitivity.Status="草稿不可读 · 已恢复默认方案";}
             try {using(var key=Registry.CurrentUser.OpenSubKey(RegistryPath)) {
                 if(key==null)return;
                 Model.ModeIndex=Math.Max(0,Math.Min(7,Convert.ToInt32(key.GetValue("mode",1))-1));
@@ -306,6 +363,7 @@ namespace GearHub {
                 app.DispatcherUnhandledException+=(s,e)=>{Forms.MessageBox.Show(e.Exception.Message,"GM GEAR");e.Handled=true;};
                 try {using(var hub=new Hub(false)) {
                     app.MainWindow=hub.Window;
+                    if(Array.IndexOf(args,"--dpi")>=0)hub.Route("Dpi");
                     if(Array.IndexOf(args,"--tray")<0)hub.Window.Show();
                     else {var handle=new WindowInteropHelper(hub.Window).EnsureHandle();}
                     return app.Run();
