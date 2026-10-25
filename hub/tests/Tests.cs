@@ -108,6 +108,7 @@ namespace GearHub {
                 fake=new FakeSession();Protocol.ApplyPolling(fake,500,CancellationToken.None);
                 Check(fake.History.Count==2&&fake.History[0].SequenceEqual(new byte[]{12,4,1,5})&&fake.History[1].SequenceEqual(new byte[]{6,9,1,2,0,0,0,0,0}),"polling apply activates default profile independently of DPI");
                 MacroChecks();
+                PresetChecks();
                 if(args.Length>0&&args[0]=="--probe"){
                     var devices=Native.Find();foreach(var d in devices)Console.WriteLine(d.Product+" Page="+d.Caps.Page+" Input="+d.Caps.Input+" Feature="+d.Caps.Feature);
                     Check(devices.Exists(d=>d.Caps.Page==0xA&&d.Caps.Input==5),"real mouse battery interface detected");
@@ -159,6 +160,32 @@ namespace GearHub {
         static void MacroKeyEvent(Hub hub,System.Windows.Input.Key key,bool down){
             var e=new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,PresentationSource.FromVisual(hub.Window),Environment.TickCount,key);
             e.RoutedEvent=down?System.Windows.Input.Keyboard.PreviewKeyDownEvent:System.Windows.Input.Keyboard.PreviewKeyUpEvent;hub.Window.RaiseEvent(e);
+        }
+        static void PresetChecks(){
+            Check(MacroPresets.All.Count==20&&MacroPresets.All.Select(p=>p.Id).Distinct().Count()==20,"twenty distinct common shortcut presets are available");
+            foreach(var preset in MacroPresets.All){var macro=preset.Create(false);MacroProtocol.ValidateDefinition(macro,false);if(macro.TargetIndex!=0||macro.Repeats!=1)throw new Exception("Preset must be unassigned and finite");}
+            Check(true,"every preset has paired keys valid delays and no default binding");
+            var copy=MacroPresets.All[0].Create(false);
+            Check(copy.Actions.Select(a=>a.Code).SequenceEqual(new byte[]{224,6,6,224})&&copy.Actions.Select(a=>a.Down).SequenceEqual(new[]{true,true,false,false}),"copy preset holds Ctrl around C and releases in reverse order");
+            var screenshot=MacroPresets.All.First(p=>p.Id=="screenshot").Create(false);
+            Check(screenshot.Actions.Select(a=>a.Code).SequenceEqual(new byte[]{227,225,22,22,225,227}),"screenshot preset uses Win Shift S with complete releases");
+            var model=new MacroModel();Check(model.Library.Count==8&&model.Library.All(m=>m.TargetIndex==0)&&!model.CanApply,"eight initial shortcuts are ready in My Macros and never auto-bind");
+            model.SelectedPreset=MacroPresets.All[1];model.AddPreset();var first=model.Selected;first.Actions[0].DelayText="200";first.TargetIndex=1;model.AddPreset();
+            Check(model.Selected.Id!=first.Id&&model.Selected.TargetIndex==0&&model.Selected.Actions[0].DelayText=="50","adding a preset makes an independent editable unassigned copy");
+            while(model.Library.Count<20)model.AddPreset();Check(Throws(()=>model.AddPreset())&&model.Library.Count==20,"adding a preset respects library capacity without replacing drafts");
+            string folder=Path.Combine(Path.GetTempPath(),"gmgear-presets-"+Guid.NewGuid().ToString("N")),file=Path.Combine(folder,"macros.json");Directory.CreateDirectory(folder);
+            try{
+                var legacy=new MacroFile {Version=1,Macros=new System.Collections.Generic.List<MacroItem>{new MacroItem {Id="keep",Name="我的原有宏",Repeat="3",Target=2,Actions=new System.Collections.Generic.List<MacroEvent>{new MacroEvent {Key=104,Down=true,Delay="50"},new MacroEvent {Key=104,Down=false,Delay="50"}}}}};
+                string original=new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(legacy);File.WriteAllText(file,original);
+                var upgraded=MacroStorage.LoadForEditor(file);var kept=upgraded.Single(m=>m.Id=="keep");
+                Check(upgraded.Count==9&&kept.Name=="我的原有宏"&&kept.TargetIndex==2&&kept.Repeats==3&&kept.Actions.Count==2,"legacy upgrade adds defaults while preserving existing names actions and bindings");
+                Check(Directory.GetFiles(folder,"*.bak").Length==1&&File.ReadAllText(Directory.GetFiles(folder,"*.bak")[0])==original&&MacroStorage.LoadForEditor(file).Count==9,"legacy upgrade backs up original and does not duplicate presets on restart");
+                upgraded.RemoveAll(m=>m.Id=="preset-copy");MacroStorage.Save(file,upgraded);
+                Check(!MacroStorage.LoadForEditor(file).Any(m=>m.Id=="preset-copy"),"a deliberately deleted preset stays deleted after saving and reopening");
+                MacroStorage.Save(file,new MacroDefinition[0]);Check(MacroStorage.LoadForEditor(file).Count==0,"an intentionally empty saved library stays empty");
+                File.Delete(file);Check(MacroStorage.LoadForEditor(file).Count==8&&MacroStorage.LoadForEditor(file).Count==8,"first run persists the initial presets only once");
+                string invalid="{broken";File.WriteAllText(file,invalid);Check(Throws(()=>MacroStorage.LoadForEditor(file))&&File.ReadAllText(file)==invalid,"unreadable user macro file is never replaced by presets");
+            }finally{foreach(string path in Directory.GetFiles(folder))File.Delete(path);Directory.Delete(folder);}
         }
         // Explicitly authorized one-time rear-side-button test. Always restore default buttons.
         static void LiveMacro(string output){
@@ -213,6 +240,12 @@ namespace GearHub {
                 hub.B("ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(hub.Model.Notice.Contains("不会写入"),"preview DPI apply never writes hardware");
                 hub.B("FeatureButtons").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
                 Check(((FrameworkElement)hub.Window.FindName("ButtonsPage")).Visibility==Visibility.Visible&&hub.Model.Macros.Selected.TargetIndex==0&&!hub.Model.CanApply,"macro page opens with no default binding");
+                Check(hub.Model.Macros.Library.Count==8&&hub.Model.Macros.Selected.Actions.Count==4,"macro page shows ready-made copy and seven other shortcuts");
+                ((ComboBox)hub.Window.FindName("MacroPresetBox")).SelectedIndex=18;hub.B("MacroPresetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(hub.Model.Macros.Selected.Name.Contains("区域截图")&&hub.Model.Macros.Selected.Actions.Count==6&&hub.Model.Macros.Selected.TargetIndex==0&&!hub.Model.CanApply,"preset selector adds complete shortcut actions without applying hardware");
+                Check(((ComboBox)hub.Window.FindName("MacroPresetBox")).SelectionBoxItem.ToString()=="区域截图 · Win+Shift+S","preset selector displays the shortcut name in the native combo template");
+                ((ComboBox)hub.Window.FindName("MacroPresetBox")).SelectedIndex=0;hub.Model.Macros.Selected=hub.Model.Macros.Library[0];hub.Model.Notice="界面预览 · 内置常用预设 · 默认未绑定";Capture(hub,Path.Combine(output,"gear-presets-preview.png"));
+                hub.B("MacroNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 hub.B("MacroInsertButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(hub.Model.Macros.Selected.Actions.Count==2,"manual click insertion creates balanced down-up actions");
                 hub.B("MacroClearButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));hub.B("MacroRecordButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 MacroKeyEvent(hub,System.Windows.Input.Key.LeftCtrl,true);MacroKeyEvent(hub,System.Windows.Input.Key.C,true);MacroKeyEvent(hub,System.Windows.Input.Key.C,false);MacroKeyEvent(hub,System.Windows.Input.Key.LeftCtrl,false);MacroKeyEvent(hub,System.Windows.Input.Key.Escape,true);

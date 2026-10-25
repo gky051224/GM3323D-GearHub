@@ -149,12 +149,17 @@
       </StackPanel>
       <StackPanel Grid.Column="2">
        <Grid Margin="0,0,0,8"><TextBlock Text="键盘宏" Foreground="#76DDFF" FontSize="15"/><TextBlock Text="{Binding Macros.Status}" Foreground="#A2ADBF" FontSize="11" HorizontalAlignment="Right"/></Grid>
+       <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock Text="常用预设" Foreground="#BCC9DB" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <ComboBox x:Name="MacroPresetBox" Grid.Column="1" ItemsSource="{Binding Macros.Presets}" SelectedItem="{Binding Macros.SelectedPreset}" DisplayMemberPath="Label" AutomationProperties.Name="常用宏预设"/>
+        <Button x:Name="MacroPresetButton" Grid.Column="2" Content="添加到我的宏" Padding="13,9" FontSize="11" Margin="10,0,0,0" ToolTip="生成完整按键动作，默认未绑定；快捷键效果取决于当前应用。"/>
+       </Grid>
        <TextBox x:Name="MacroNameBox" Text="{Binding Macros.Selected.Name,UpdateSourceTrigger=PropertyChanged}" MaxLength="40" FontSize="17" Padding="10,8" AutomationProperties.Name="宏名称"/>
        <Grid Margin="0,11,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
         <StackPanel><TextBlock Text="触发按键" Style="{StaticResource Muted}" Margin="0,0,0,5"/><ComboBox x:Name="MacroTargetBox" ItemsSource="{Binding Macros.Targets}" SelectedIndex="{Binding Macros.Selected.TargetIndex}" AutomationProperties.Name="宏触发按键"/></StackPanel>
         <StackPanel Grid.Column="2"><TextBlock Text="重复次数" Style="{StaticResource Muted}" Margin="0,0,0,5"/><TextBox x:Name="MacroRepeatBox" Text="{Binding Macros.Selected.RepeatText,UpdateSourceTrigger=PropertyChanged}" MaxLength="3" Padding="10,11" AutomationProperties.Name="宏重复次数"/></StackPanel>
        </Grid>
-       <DataGrid x:Name="MacroActionsGrid" ItemsSource="{Binding Macros.Selected.Actions}" SelectedItem="{Binding Macros.Action}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="False" SelectionMode="Single" SelectionUnit="FullRow" Height="174" RowHeight="27" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#414755" Background="#23262E" Foreground="#F3F6FC" BorderBrush="#444B59" RowBackground="#292D36" AlternatingRowBackground="#252932">
+       <DataGrid x:Name="MacroActionsGrid" ItemsSource="{Binding Macros.Selected.Actions}" SelectedItem="{Binding Macros.Action}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="False" SelectionMode="Single" SelectionUnit="FullRow" Height="148" RowHeight="27" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#414755" Background="#23262E" Foreground="#F3F6FC" BorderBrush="#444B59" RowBackground="#292D36" AlternatingRowBackground="#252932">
         <DataGrid.Resources>
          <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#333944"/><Setter Property="Foreground" Value="#D6E2F2"/><Setter Property="Padding" Value="9,7"/><Setter Property="BorderThickness" Value="0"/></Style>
          <Style x:Key="MacroCellText" TargetType="TextBlock"><Setter Property="Foreground" Value="#F1F5FB"/><Setter Property="Padding" Value="8,4"/></Style>
@@ -185,7 +190,7 @@
           </StackPanel></Border>
           <Border x:Name="AboutPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="34"><StackPanel MaxWidth="650" HorizontalAlignment="Left">
             <TextBlock Text="GM GEAR" FontFamily="Segoe UI" FontSize="40" FontWeight="Bold" Foreground="#75DFFF"/><TextBlock Text="为 GM3323D 打造的独立外设控制中心" FontSize="16" Margin="0,10,0,25"/>
-            <TextBlock Text="v0.3.0 · Windows 桌面版" Style="{StaticResource Muted}"/>
+            <TextBlock Text="v0.3.1 · Windows 桌面版" Style="{StaticResource Muted}"/>
             <TextBlock Text="灯光和电量实现基于 Evan816Z / GM3323D-MouseLight，按 MIT 许可证二次开发。保留上游源码与版权声明，重做独立界面及 HID 适配层。" Foreground="#BAC5D6" Margin="0,25,0,14" LineHeight="25"/>
             <TextBlock Text="这是独立开发的鼠标控制软件，未与罗技或戴尔关联。" Style="{StaticResource Muted}" LineHeight="23"/>
             <Button x:Name="SourceButton" Content="查看上游项目  ↗" HorizontalAlignment="Left" Margin="0,28,0,0"/>

@@ -69,15 +69,17 @@ namespace GearHub {
     public sealed class MacroModel : INotifyPropertyChanged {
         public event PropertyChangedEventHandler PropertyChanged;
         public ObservableCollection<MacroDefinition> Library {get;private set;}
-        MacroDefinition selected;MacroAction action;MacroKey key=MacroKeys.All[0];int insertMode;
+        MacroDefinition selected;MacroAction action;MacroKey key=MacroKeys.All[0];MacroPreset preset=MacroPresets.All[0];int insertMode;
         string delay="50",status="本机草稿 · 默认未绑定";bool recording;
-        public MacroModel(){Library=new ObservableCollection<MacroDefinition>();Library.CollectionChanged+=(s,e)=>{if(e.NewItems!=null)foreach(MacroDefinition m in e.NewItems)m.PropertyChanged+=(a,b)=>Dirty();Dirty();};Add();}
+        public MacroModel(){Library=new ObservableCollection<MacroDefinition>();Library.CollectionChanged+=(s,e)=>{if(e.NewItems!=null)foreach(MacroDefinition m in e.NewItems)m.PropertyChanged+=(a,b)=>Dirty();Dirty();};var initial=new List<MacroDefinition>();MacroPresets.AddDefaults(initial);Replace(initial);}
         void Notify(string field){var fn=PropertyChanged;if(fn!=null)fn(this,new PropertyChangedEventArgs(field));}
         void Dirty(){Status="本机草稿 · 尚未应用";Notify("Error");Notify("CanApply");Notify("StepCount");}
         public MacroDefinition Selected {get{return selected;}set{selected=value;Action=null;Notify("Selected");Notify("HasSelection");Notify("Error");Notify("StepCount");}}
         public bool HasSelection {get{return selected!=null;}}
         public MacroAction Action {get{return action;}set{action=value;Notify("Action");}}
         public IList<MacroKey> Keys {get{return MacroKeys.All;}}
+        public IList<MacroPreset> Presets {get{return MacroPresets.All;}}
+        public MacroPreset SelectedPreset {get{return preset;}set{preset=value;Notify("SelectedPreset");}}
         public MacroKey InsertKey {get{return key;}set{key=value;Notify("InsertKey");}}
         public string[] InsertModes {get{return new[]{"点按（按下 + 松开）","仅按下","仅松开"};}}
         public int InsertMode {get{return insertMode;}set{insertMode=value;Notify("InsertMode");}}
@@ -90,6 +92,7 @@ namespace GearHub {
         public string Error {get{if(selected==null||(selected.Actions.Count==0&&selected.TargetIndex==0))return "";try{MacroProtocol.ValidateDefinition(selected,false);if(Library.Any(m=>m.TargetIndex!=0))MacroProtocol.ValidatePlan(Library);return "";}catch(Exception ex){return ex.Message;}}}
         public bool CanApply {get{if(recording)return false;try{MacroProtocol.ValidatePlan(Library);return true;}catch(Exception){return false;}}}
         public void Add(){if(Library.Count>=20)throw new ArgumentException("最多保存 20 个本机宏。");var macro=new MacroDefinition {Name="新建宏 "+(Library.Count+1)};Library.Add(macro);Selected=macro;}
+        public void AddPreset(){if(preset==null)return;if(Library.Count>=20)throw new ArgumentException("宏列表已满（20 个）；请先删除不需要的草稿。");var macro=preset.Create(false);Library.Add(macro);Selected=macro;}
         public void Remove(){if(selected==null)return;int index=Library.IndexOf(selected);Library.Remove(selected);Selected=Library.Count==0?null:Library[Math.Min(index,Library.Count-1)];}
         public void Insert(){
             if(selected==null||key==null)return;
@@ -105,7 +108,7 @@ namespace GearHub {
     }
 
     public sealed class MacroFile {
-        public int Version {get;set;} public List<MacroItem> Macros {get;set;}
+        public int Version {get;set;} public int PresetsVersion {get;set;} public List<MacroItem> Macros {get;set;}
     }
     public sealed class MacroItem {
         public string Id {get;set;} public string Name {get;set;} public string Repeat {get;set;} public int Target {get;set;}
@@ -116,15 +119,17 @@ namespace GearHub {
         public static string DefaultPath {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"GM3323DGearHub\macros.json");}}
         public static void Save(string path,IEnumerable<MacroDefinition> library){
             var list=library.ToList();if(list.Count>20||list.Any(m=>m.Name.Length>40||m.Actions.Count>50))throw new ArgumentException("宏名称最多 40 字，单宏最多 50 个动作。");
-            var file=new MacroFile {Version=1,Macros=list.Select(m=>new MacroItem {Id=m.Id,Name=m.Name,Repeat=m.RepeatText,Target=m.TargetIndex,Actions=m.Actions.Select(a=>new MacroEvent {Key=a.Code,Down=a.Down,Delay=a.DelayText}).ToList()}).ToList()};
+            var file=new MacroFile {Version=1,PresetsVersion=1,Macros=list.Select(m=>new MacroItem {Id=m.Id,Name=m.Name,Repeat=m.RepeatText,Target=m.TargetIndex,Actions=m.Actions.Select(a=>new MacroEvent {Key=a.Code,Down=a.Down,Delay=a.DelayText}).ToList()}).ToList()};
             string json=new JavaScriptSerializer().Serialize(file);Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path)));
             string temp=path+".tmp";File.WriteAllText(temp,json,System.Text.Encoding.UTF8);
             if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);
         }
-        public static List<MacroDefinition> Load(string path){
+        public static List<MacroDefinition> Load(string path){bool legacy;return Load(path,out legacy);}
+        static List<MacroDefinition> Load(string path,out bool legacy){
             if(new FileInfo(path).Length>131072)throw new ArgumentException("宏文件过大。");
             var file=new JavaScriptSerializer().Deserialize<MacroFile>(File.ReadAllText(path));
             if(file==null||file.Version!=1||file.Macros==null||file.Macros.Count>20)throw new ArgumentException("宏文件版本或格式不正确。");
+            legacy=file.PresetsVersion<1;
             var result=new List<MacroDefinition>();
             foreach(var m in file.Macros){
                 if(m==null||m.Name==null||m.Name.Length>40||m.Actions==null||m.Actions.Count>50||m.Target<0||m.Target>3)throw new ArgumentException("宏文件内容不完整。");
@@ -133,6 +138,16 @@ namespace GearHub {
                 result.Add(macro);
             }
             return result;
+        }
+        // Upgrade old drafts once. Saving the marker also preserves deliberate preset deletions.
+        public static List<MacroDefinition> LoadForEditor(string path){
+            bool exists=File.Exists(path),legacy=true;var library=exists?Load(path,out legacy):new List<MacroDefinition>();
+            if(legacy){
+                MacroPresets.AddDefaults(library);
+                if(exists)File.Copy(path,path+".before-presets-"+DateTime.UtcNow.ToString("yyyyMMddHHmmss")+"-"+Guid.NewGuid().ToString("N").Substring(0,6)+".bak");
+                Save(path,library);
+            }
+            return library;
         }
     }
 }

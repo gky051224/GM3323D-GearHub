@@ -123,6 +123,7 @@ namespace GearHub {
             B("SaveDraftButton").Click+=(s,e)=>{if(Model.MacroPage)SaveMacros();else if(Model.DpiPage)SaveSensitivity();else SaveDraft();};
             B("DpiDefaultButton").Click+=(s,e)=>Model.Sensitivity.Load(new DpiScheme());
             B("MacroNewButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.Add());
+            B("MacroPresetButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.AddPreset());
             B("MacroDeleteButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.Remove());
             B("MacroInsertButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.Insert());
             B("MacroUpButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.Move(-1));
@@ -337,7 +338,7 @@ namespace GearHub {
             } catch(Exception ex){Model.Notice="保存失败："+ex.Message;}
         }
         void LoadDraft() {
-            try{if(File.Exists(MacroStorage.DefaultPath))Model.Macros.Replace(MacroStorage.Load(MacroStorage.DefaultPath));}
+            try{Model.Macros.Replace(MacroStorage.LoadForEditor(MacroStorage.DefaultPath));}
             catch(Exception){Model.Macros.Status="本机宏文件不可读；原文件未修改";}
             try{using(var key=Registry.CurrentUser.OpenSubKey(RegistryPath+@"\Sensitivity")){
                 if(key!=null){
