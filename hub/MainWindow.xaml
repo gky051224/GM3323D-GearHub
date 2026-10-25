@@ -1,0 +1,140 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+ Title="GM GEAR · GM3323D" Width="1180" Height="800" MinWidth="1040" MinHeight="720" WindowStartupLocation="CenterScreen"
+ WindowStyle="None" ResizeMode="CanResize" Background="#25272D" Foreground="#F4F6FA" FontFamily="Microsoft YaHei UI" FontSize="13"
+ UseLayoutRounding="True" TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType">
+ <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"/></shell:WindowChrome.WindowChrome>
+  <Window.Resources>
+    <SolidColorBrush x:Key="Accent" Color="#4FD5FF"/>
+    <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#F4F6FA"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
+    <Style TargetType="Button">
+      <Setter Property="Foreground" Value="#D3D8E2"/><Setter Property="Background" Value="#2D313A"/><Setter Property="BorderBrush" Value="#3C424D"/>
+      <Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="18,11"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+        <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+          <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+        </Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Background" Value="#3B424E"/></Trigger>
+          <Trigger Property="IsPressed" Value="True"><Setter TargetName="Chrome" Property="Opacity" Value="0.72"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="#4FD5FF"/></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="#4FD5FF"/><Setter Property="Foreground" Value="#092733"/><Setter Property="BorderBrush" Value="#4FD5FF"/><Setter Property="FontWeight" Value="SemiBold"/>
+      <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers>
+    </Style>
+    <Style x:Key="Nav" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Margin" Value="0"/><Setter Property="Padding" Value="23,20"/>
+      <Style.Triggers><Trigger Property="Tag" Value="Active"><Setter Property="Background" Value="#202228"/><Setter Property="Foreground" Value="#70DFFF"/><Setter Property="BorderBrush" Value="Transparent"/></Trigger></Style.Triggers>
+    </Style>
+    <Style x:Key="Muted" TargetType="TextBlock"><Setter Property="Foreground" Value="#A2ADBF"/><Setter Property="FontSize" Value="12"/></Style>
+    <Style TargetType="TextBox"><Setter Property="Background" Value="#191C22"/><Setter Property="Foreground" Value="#F4F6FA"/><Setter Property="BorderBrush" Value="#485363"/><Setter Property="Padding" Value="12,10"/><Setter Property="CaretBrush" Value="#4FD5FF"/></Style>
+    <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#E1E7F0"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="Margin" Value="0,8"/></Style>
+    <ControlTemplate x:Key="MouseArt" TargetType="ContentControl">
+      <Viewbox Stretch="Uniform"><Grid Width="760" Height="1150" ClipToBounds="True">
+        <Image Tag="ProductImage" Source="{Binding MouseImage}" Width="1280" Height="1280" Margin="-260,-60,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" RenderOptions.BitmapScalingMode="HighQuality"/>
+      </Grid></Viewbox>
+    </ControlTemplate>
+    <Style TargetType="ListBoxItem">
+      <Setter Property="Foreground" Value="#D3DCE9"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="11"/><Setter Property="Margin" Value="0,0,8,8"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="Cell" Background="#2B3039" BorderBrush="#414956" BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border>
+        <ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="Cell" Property="Background" Value="#1C3C4B"/><Setter TargetName="Cell" Property="BorderBrush" Value="#4FD5FF"/><Setter Property="Foreground" Value="#9AE9FF"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Cell" Property="BorderBrush" Value="#9CAFC3"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Cell" Property="BorderBrush" Value="#B2EEFF"/></Trigger></ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar"><Setter Property="Width" Value="5"/><Setter Property="MinWidth" Value="5"/><Setter Property="MaxWidth" Value="5"/><Setter Property="Background" Value="Transparent"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ScrollBar"><Track x:Name="PART_Track" IsDirectionReversed="True"><Track.Thumb><Thumb Background="#59616F"><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="{TemplateBinding Background}" CornerRadius="2"/></ControlTemplate></Thumb.Template></Thumb></Track.Thumb></Track></ControlTemplate></Setter.Value></Setter></Style>
+    <Style TargetType="ComboBox"><Setter Property="Foreground" Value="#F4F6FA"/><Setter Property="Background" Value="#34373F"/><Setter Property="Padding" Value="12"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox"><Grid>
+        <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen,RelativeSource={RelativeSource TemplatedParent},Mode=TwoWay}"><ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="#34373F" BorderBrush="#5A606D" BorderThickness="0,0,0,1" Padding="12"><TextBlock Text="⌄" HorizontalAlignment="Right" Foreground="#C8D0DC"/></Border></ControlTemplate></ToggleButton.Template></ToggleButton>
+        <ContentPresenter Content="{TemplateBinding SelectionBoxItem}" Margin="12" VerticalAlignment="Center" IsHitTestVisible="False"/>
+        <Popup Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False"><Border Background="#2A2D34" BorderBrush="#596474" BorderThickness="1" MinWidth="280" MaxHeight="300"><ScrollViewer><ItemsPresenter/></ScrollViewer></Border></Popup>
+      </Grid></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style TargetType="ComboBoxItem"><Setter Property="Foreground" Value="#ECF1F9"/><Setter Property="Background" Value="#2A2D34"/><Setter Property="Padding" Value="12,10"/><Style.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter Property="Background" Value="#235064"/></Trigger></Style.Triggers></Style>
+  </Window.Resources>
+
+ <Grid Background="#25272D"><Grid.RowDefinitions><RowDefinition Height="56"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <Grid x:Name="TitleDrag" Background="#202126"><Grid.ColumnDefinitions><ColumnDefinition Width="64"/><ColumnDefinition Width="*"/><ColumnDefinition Width="144"/></Grid.ColumnDefinitions>
+   <Button x:Name="MenuButton" Content="&#xE700;" FontFamily="Segoe MDL2 Assets" Background="Transparent" BorderThickness="0" Padding="18" ToolTip="偏好设置" AutomationProperties.Name="打开偏好设置"/>
+   <Grid Grid.Column="1"><TextBlock Text="GM GEAR" FontFamily="Segoe UI" FontWeight="Bold" FontSize="16" Margin="8,0" VerticalAlignment="Center"/><TextBlock Text="桌面：默认配置" Foreground="#D3D9E3" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center"/></Grid>
+   <UniformGrid Grid.Column="2" Columns="3"><Button x:Name="WindowMin" Content="−" Background="Transparent" BorderThickness="0" Padding="12" ToolTip="最小化"/><Button x:Name="WindowMax" Content="□" Background="Transparent" BorderThickness="0" Padding="12" ToolTip="最大化"/><Button x:Name="WindowClose" Content="×" Background="Transparent" BorderThickness="0" Padding="12" ToolTip="关闭窗口"/></UniformGrid>
+  </Grid>
+  <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Border x:Name="Sidebar" Width="76" Background="#1D1F25" Visibility="Collapsed"><DockPanel>
+    <StackPanel DockPanel.Dock="Bottom"><Button x:Name="NavSettings" Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="21" Style="{StaticResource Nav}" ToolTip="偏好设置" AutomationProperties.Name="偏好设置"/><Button x:Name="NavAbout" Content="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="21" Style="{StaticResource Nav}" ToolTip="关于" AutomationProperties.Name="关于"/><Button x:Name="HideButton" Content="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="21" Style="{StaticResource Nav}" ToolTip="收起到托盘" AutomationProperties.Name="收起到托盘"/></StackPanel>
+    <StackPanel><Button x:Name="NavHome" Content="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="21" Style="{StaticResource Nav}" ToolTip="返回设备主页" AutomationProperties.Name="返回设备主页"/><Border Height="1" Background="#3C414C" Margin="19,8"/><Button x:Name="NavLighting" Content="&#xE790;" FontFamily="Segoe MDL2 Assets" FontSize="23" Style="{StaticResource Nav}" ToolTip="灯光效果" AutomationProperties.Name="灯光效果"/><Button x:Name="NavButtons" Content="&#xE765;" FontFamily="Segoe MDL2 Assets" FontSize="23" Style="{StaticResource Nav}" ToolTip="按键与宏" AutomationProperties.Name="按键与宏"/><Button x:Name="NavDpi" Content="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="23" Style="{StaticResource Nav}" ToolTip="灵敏度 DPI" AutomationProperties.Name="灵敏度 DPI"/></StackPanel>
+   </DockPanel></Border>
+   <Grid Grid.Column="1" Margin="32,17,32,16"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel x:Name="PageHeading" Margin="0,0,0,16"><TextBlock Text="{Binding Header}" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="{Binding Subhead}" Style="{StaticResource Muted}" Margin="0,5,0,0"/></StackPanel>
+    <ScrollViewer x:Name="MainScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,6,0"><Grid>
+     <StackPanel x:Name="HomePage">
+      <Button x:Name="ConfigureButton" Background="Transparent" BorderThickness="0" Padding="0,8,0,8" HorizontalAlignment="Center" HorizontalContentAlignment="Center" ToolTip="打开 GM3323D 设置">
+       <StackPanel><ContentControl Template="{StaticResource MouseArt}" Width="220" Height="245"/><TextBlock Text="GM3323D" FontFamily="Segoe UI" FontSize="23" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,9,0,0"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0"><TextBlock Text="{Binding Battery}" Foreground="#78E7C8" FontFamily="Segoe UI" FontSize="13" Margin="0,0,14,0"/><TextBlock Text="{Binding Connection}" Style="{StaticResource Muted}" FontSize="11"/></StackPanel><TextBlock Text="点击配置设备" Foreground="#7EDDF8" FontSize="11" HorizontalAlignment="Center" Margin="0,11,0,0"/></StackPanel>
+      </Button>
+      <UniformGrid Columns="3" Margin="0,20,0,0">
+       <Button x:Name="FeatureLighting" Margin="0,0,14,0" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#343842"><StackPanel><TextBlock Text="探索灯光效果" FontSize="16"/><TextBlock Text="自定义颜色、灯效与亮度" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="进入灯光配置  →" Foreground="#7EDDF8" FontSize="11"/></StackPanel></Button>
+       <Button x:Name="FeatureDpi" Margin="0,0,14,0" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#30343D"><StackPanel><TextBlock Text="灵敏度 · DPI" FontSize="16"/><TextBlock Text="灵敏度与回报率设置" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="待适配  →" Foreground="#C9B384" FontSize="11"/></StackPanel></Button>
+       <Button x:Name="FeatureButtons" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#2C3038"><StackPanel><TextBlock Text="按键与宏" FontSize="16"/><TextBlock Text="自定义鼠标按键操作" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="待适配  →" Foreground="#C9B384" FontSize="11"/></StackPanel></Button>
+      </UniformGrid>
+     </StackPanel>
+     <Grid x:Name="LightingPage" Visibility="Collapsed" IsEnabled="{Binding CanEdit}"><Grid.ColumnDefinitions><ColumnDefinition Width="306"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <StackPanel Margin="0,0,24,0">
+       <Grid Margin="0,0,0,17"><TextBlock Text="预设" FontSize="15" Foreground="#6DE1FF"/><TextBlock Text="{Binding DraftStatus}" Foreground="#8B9AAE" FontSize="11" HorizontalAlignment="Right"/></Grid>
+       <Border Height="2" Background="#4FD5FF" HorizontalAlignment="Left" Width="34" Margin="0,0,0,18"/>
+       <CheckBox x:Name="LightEnabled" Content="启用灯光" IsChecked="{Binding LightEnabled}" Margin="0,0,0,16"/>
+       <TextBlock Text="效果" Style="{StaticResource Muted}" Margin="0,0,0,7"/>
+       <ComboBox x:Name="ModeList" ItemsSource="{Binding Modes}" SelectedIndex="{Binding ModeIndex}" Margin="0,0,0,19"/>
+       <TextBlock Text="颜色" Style="{StaticResource Muted}" Margin="0,0,0,10"/>
+       <Grid x:Name="ColorSquare" Height="112" Background="{Binding HueBrush}" Cursor="Cross" ToolTip="点击选择颜色的饱和度与明度">
+        <Rectangle><Rectangle.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="White"/><GradientStop Color="#00FFFFFF" Offset="1"/></LinearGradientBrush></Rectangle.Fill></Rectangle>
+        <Rectangle><Rectangle.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#00000000"/><GradientStop Color="Black" Offset="1"/></LinearGradientBrush></Rectangle.Fill></Rectangle>
+        <Canvas IsHitTestVisible="False"><Ellipse x:Name="PickerMarker" Width="10" Height="10" Stroke="White" StrokeThickness="2" Fill="Transparent"/></Canvas>
+       </Grid>
+       <Slider x:Name="HueSlider" Minimum="0" Maximum="359" Value="{Binding Hue}" Margin="0,9,0,13" Height="17"><Slider.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="Red"/><GradientStop Color="Yellow" Offset="0.167"/><GradientStop Color="Lime" Offset="0.333"/><GradientStop Color="Cyan" Offset="0.5"/><GradientStop Color="Blue" Offset="0.667"/><GradientStop Color="Magenta" Offset="0.833"/><GradientStop Color="Red" Offset="1"/></LinearGradientBrush></Slider.Background></Slider>
+       <UniformGrid Columns="6" Margin="0,0,0,12">
+        <Button x:Name="ColorCyan" Tag="#46D3FF" Background="#46D3FF" Padding="0" Height="23" Margin="0,0,8,0"/><Button x:Name="ColorPurple" Tag="#A68AFF" Background="#A68AFF" Padding="0" Margin="0,0,8,0"/><Button x:Name="ColorPink" Tag="#FF77B4" Background="#FF77B4" Padding="0" Margin="0,0,8,0"/><Button x:Name="ColorOrange" Tag="#FFB866" Background="#FFB866" Padding="0" Margin="0,0,8,0"/><Button x:Name="ColorGreen" Tag="#6DE0AC" Background="#6DE0AC" Padding="0" Margin="0,0,8,0"/><Button x:Name="ColorWhite" Tag="#F3F7FF" Background="#F3F7FF" Padding="0"/>
+       </UniformGrid>
+       <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="HexBox" Text="{Binding ColorHex,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" FontSize="14" Padding="10,7" MaxLength="7"/><Button x:Name="PickColor" Grid.Column="1" Content="自定义" Padding="10,7" Margin="8,0,0,0"/></Grid>
+       <Grid Margin="0,19,0,7"><TextBlock Text="亮度" Style="{StaticResource Muted}"/><TextBlock Text="{Binding BrightnessLabel}" HorizontalAlignment="Right" Foreground="#A9B7CA" FontSize="12"/></Grid>
+       <Slider x:Name="BrightnessSlider" Minimum="1" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Brightness}" Foreground="#4FD5FF"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" VerticalAlignment="Center"><ContentControl Template="{StaticResource MouseArt}" Height="365" MaxWidth="300"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0"><TextBlock Text="GM3323D" FontSize="14" Foreground="#C3CDDD"/><TextBlock Text="{Binding Battery}" Foreground="#7FE3C6" FontSize="12" Margin="16,2,0,0"/></StackPanel><TextBlock Text="颜色预览 · 应用后更改设备" Style="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Center" Margin="0,11,0,0"/></StackPanel>
+     </Grid>
+          <Border x:Name="PendingPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="40">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,25,0"><TextBlock Text="暂未适配" Foreground="#E6C17A" FontSize="12"/><TextBlock x:Name="PendingTitle" FontSize="27" FontWeight="SemiBold" Margin="0,14,0,15"/><TextBlock x:Name="PendingDescription" Foreground="#B9C3D2" LineHeight="25"/><TextBlock Text="目前仍需使用原厂软件调整这些设置。&#10;当前鼠标配置不会受到影响。" Style="{StaticResource Muted}" Margin="0,25,0,0" LineHeight="23"/><Button x:Name="PendingBack" Content="返回设备主页" HorizontalAlignment="Left" Margin="0,28,0,0"/></StackPanel>
+              <ContentControl Grid.Column="1" Template="{StaticResource MouseArt}" Height="335"/>
+            </Grid>
+          </Border>
+          <Border x:Name="SettingsPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="32"><StackPanel MaxWidth="650" HorizontalAlignment="Left">
+            <TextBlock Text="让它按你的习惯工作" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock Text="新软件的设置独立保存，不影响原来的电量软件。" Style="{StaticResource Muted}" Margin="0,9,0,25"/>
+            <CheckBox x:Name="AutostartCheck" Content="开机启动 GM GEAR"/>
+            <CheckBox x:Name="CloseToTray" Content="关闭主窗口时收起到托盘" IsChecked="True"/>
+            <TextBlock Text="兼容设置" FontSize="16" Margin="0,30,0,10"/>
+            <CheckBox x:Name="PrefixCheck" Content="使用报告 ID 前缀写入格式" IsChecked="{Binding PrefixFormat}"/>
+            <TextBlock Text="默认关闭。只有设备拒绝默认格式时才需要切换；切换后仍需点击应用。" Style="{StaticResource Muted}" LineHeight="22" Margin="0,4,0,20"/>
+            <TextBlock Text="电量与运行方式" FontSize="16" Margin="0,12,0,12"/>
+            <TextBlock Text="鼠标电量按接收器的 10% 档位显示，不估算中间值。&#10;电量在后台持续监听，断开后清除旧读数。&#10;不保存电量历史；启动与重连不会自动更改灯光。" Foreground="#B9C3D2" LineHeight="25"/>
+            <Button x:Name="ExitButton" Content="退出 GM GEAR" HorizontalAlignment="Left" Margin="0,30,0,0"/>
+          </StackPanel></Border>
+          <Border x:Name="AboutPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="34"><StackPanel MaxWidth="650" HorizontalAlignment="Left">
+            <TextBlock Text="GM GEAR" FontFamily="Segoe UI" FontSize="40" FontWeight="Bold" Foreground="#75DFFF"/><TextBlock Text="为 GM3323D 打造的独立外设控制中心" FontSize="16" Margin="0,10,0,25"/>
+            <TextBlock Text="v0.1 · Windows 桌面版" Style="{StaticResource Muted}"/>
+            <TextBlock Text="灯光和电量实现基于 Evan816Z / GM3323D-MouseLight，按 MIT 许可证二次开发。保留上游源码与版权声明，重做独立界面及 HID 适配层。" Foreground="#BAC5D6" Margin="0,25,0,14" LineHeight="25"/>
+            <TextBlock Text="这是独立开发的鼠标控制软件，未与罗技或戴尔关联。" Style="{StaticResource Muted}" LineHeight="23"/>
+            <Button x:Name="SourceButton" Content="查看上游项目  ↗" HorizontalAlignment="Left" Margin="0,28,0,0"/>
+          </StackPanel></Border>
+
+    </Grid></ScrollViewer>
+    <Border Grid.Row="2" BorderBrush="#424752" BorderThickness="0,1,0,0" Margin="0,17,0,0" Padding="0,12,0,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <TextBlock Text="{Binding Notice}" Foreground="#A8B6CA" FontSize="10" VerticalAlignment="Center" Margin="0,0,15,0"/><Button x:Name="SaveDraftButton" Content="保存到本机" Grid.Column="1" Background="Transparent" BorderThickness="0" Margin="0,0,12,0" Padding="10,9" FontSize="11" Visibility="Collapsed"/><Button x:Name="ApplyButton" Grid.Column="2" Content="{Binding ApplyLabel}" Style="{StaticResource Primary}" IsEnabled="{Binding CanApply}" Visibility="Collapsed" Padding="20,9" MinWidth="150" Margin="0,0,12,0"/><Button x:Name="RefreshButton" Grid.Column="3" Content="重新检测" Padding="14,9" FontSize="11"/>
+    </Grid></Border>
+   </Grid>
+  </Grid>
+ </Grid>
+</Window>
