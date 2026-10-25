@@ -31,7 +31,7 @@
       <Setter Property="Margin" Value="0"/><Setter Property="Padding" Value="23,20"/>
       <Style.Triggers><Trigger Property="Tag" Value="Active"><Setter Property="Background" Value="#202228"/><Setter Property="Foreground" Value="#70DFFF"/><Setter Property="BorderBrush" Value="Transparent"/></Trigger></Style.Triggers>
     </Style>
-    <Style x:Key="Muted" TargetType="TextBlock"><Setter Property="Foreground" Value="#A2ADBF"/><Setter Property="FontSize" Value="12"/></Style>
+    <Style x:Key="Muted" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="Foreground" Value="#A2ADBF"/><Setter Property="FontSize" Value="12"/></Style>
     <Style x:Key="DpiTile" TargetType="RadioButton">
       <Setter Property="Cursor" Value="Hand"/><Setter Property="Margin" Value="0,0,8,8"/>
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton"><Border x:Name="Tile" Background="#30343D" BorderBrush="#444A57" BorderThickness="1" CornerRadius="5" Padding="12,10"><ContentPresenter/></Border><ControlTemplate.Triggers>
@@ -86,7 +86,7 @@
       <UniformGrid Columns="3" Margin="0,20,0,0">
        <Button x:Name="FeatureLighting" Margin="0,0,14,0" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#343842"><StackPanel><TextBlock Text="探索灯光效果" FontSize="16"/><TextBlock Text="自定义颜色、灯效与亮度" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="进入灯光配置  →" Foreground="#7EDDF8" FontSize="11"/></StackPanel></Button>
        <Button x:Name="FeatureDpi" Margin="0,0,14,0" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#30343D"><StackPanel><TextBlock Text="灵敏度 · DPI" FontSize="16"/><TextBlock Text="六档 DPI 与回报率设置" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="配置灵敏度  →" Foreground="#7EDDF8" FontSize="11"/></StackPanel></Button>
-       <Button x:Name="FeatureButtons" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#2C3038"><StackPanel><TextBlock Text="按键与宏" FontSize="16"/><TextBlock Text="自定义鼠标按键操作" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="待适配  →" Foreground="#C9B384" FontSize="11"/></StackPanel></Button>
+       <Button x:Name="FeatureButtons" Padding="20,17" HorizontalContentAlignment="Stretch" Background="#2C3038"><StackPanel><TextBlock Text="按键与宏" FontSize="16"/><TextBlock Text="录制、编辑并绑定键盘宏" Style="{StaticResource Muted}" Margin="0,7,0,13"/><TextBlock Text="打开宏编辑器  →" Foreground="#7EDDF8" FontSize="11"/></StackPanel></Button>
       </UniformGrid>
      </StackPanel>
      <Grid x:Name="LightingPage" Visibility="Collapsed" IsEnabled="{Binding CanEdit}"><Grid.ColumnDefinitions><ColumnDefinition Width="306"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -139,12 +139,41 @@
        <TextBlock Text="使用鼠标的默认配置（第 1 组）。这里显示本机方案，未读取设备当前数值。&#10;应用 DPI 会替换六档数值与档位指示色；回报率单独应用。" Style="{StaticResource Muted}" FontSize="11" LineHeight="20" Margin="0,16,0,0"/>
       </StackPanel>
      </Grid>
-          <Border x:Name="PendingPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="40">
-            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions>
-              <StackPanel VerticalAlignment="Center" Margin="0,0,25,0"><TextBlock Text="暂未适配" Foreground="#E6C17A" FontSize="12"/><TextBlock x:Name="PendingTitle" FontSize="27" FontWeight="SemiBold" Margin="0,14,0,15"/><TextBlock x:Name="PendingDescription" Foreground="#B9C3D2" LineHeight="25"/><TextBlock Text="目前仍需使用原厂软件调整这些设置。&#10;当前鼠标配置不会受到影响。" Style="{StaticResource Muted}" Margin="0,25,0,0" LineHeight="23"/><Button x:Name="PendingBack" Content="返回设备主页" HorizontalAlignment="Left" Margin="0,28,0,0"/></StackPanel>
-              <ContentControl Grid.Column="1" Template="{StaticResource MouseArt}" Height="335"/>
-            </Grid>
-          </Border>
+     <Grid x:Name="ButtonsPage" Visibility="Collapsed" IsEnabled="{Binding CanEdit}"><Grid.ColumnDefinitions><ColumnDefinition Width="185"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <StackPanel>
+       <TextBlock Text="我的宏" Foreground="#76DDFF" FontSize="15" Margin="0,0,0,12"/>
+       <ListBox x:Name="MacroLibrary" ItemsSource="{Binding Macros.Library}" SelectedItem="{Binding Macros.Selected}" DisplayMemberPath="Name" Height="236" Background="#21242B" BorderThickness="0" Foreground="#EFF5FF"/>
+       <WrapPanel Margin="0,10,0,0"><Button x:Name="MacroNewButton" Content="新建" Padding="15,8" FontSize="11" Margin="0,0,8,0"/><Button x:Name="MacroDeleteButton" Content="删除草稿" Padding="12,8" FontSize="11"/></WrapPanel>
+       <TextBlock Text="新宏默认未绑定。&#10;应用会替换第 1 组按键方案，其他键恢复标准功能。&#10;本机保存不会自动应用。" Style="{StaticResource Muted}" FontSize="11" LineHeight="21" Margin="0,20,0,16"/>
+       <Button x:Name="MacroRestoreButton" Content="恢复默认按键" IsEnabled="{Binding CanRestoreButtons}" HorizontalAlignment="Left" Padding="14,9" FontSize="11"/>
+      </StackPanel>
+      <StackPanel Grid.Column="2">
+       <Grid Margin="0,0,0,8"><TextBlock Text="键盘宏" Foreground="#76DDFF" FontSize="15"/><TextBlock Text="{Binding Macros.Status}" Foreground="#A2ADBF" FontSize="11" HorizontalAlignment="Right"/></Grid>
+       <TextBox x:Name="MacroNameBox" Text="{Binding Macros.Selected.Name,UpdateSourceTrigger=PropertyChanged}" MaxLength="40" FontSize="17" Padding="10,8" AutomationProperties.Name="宏名称"/>
+       <Grid Margin="0,11,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
+        <StackPanel><TextBlock Text="触发按键" Style="{StaticResource Muted}" Margin="0,0,0,5"/><ComboBox x:Name="MacroTargetBox" ItemsSource="{Binding Macros.Targets}" SelectedIndex="{Binding Macros.Selected.TargetIndex}" AutomationProperties.Name="宏触发按键"/></StackPanel>
+        <StackPanel Grid.Column="2"><TextBlock Text="重复次数" Style="{StaticResource Muted}" Margin="0,0,0,5"/><TextBox x:Name="MacroRepeatBox" Text="{Binding Macros.Selected.RepeatText,UpdateSourceTrigger=PropertyChanged}" MaxLength="3" Padding="10,11" AutomationProperties.Name="宏重复次数"/></StackPanel>
+       </Grid>
+       <DataGrid x:Name="MacroActionsGrid" ItemsSource="{Binding Macros.Selected.Actions}" SelectedItem="{Binding Macros.Action}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="False" SelectionMode="Single" SelectionUnit="FullRow" Height="174" RowHeight="27" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#414755" Background="#23262E" Foreground="#F3F6FC" BorderBrush="#444B59" RowBackground="#292D36" AlternatingRowBackground="#252932">
+        <DataGrid.Resources>
+         <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#333944"/><Setter Property="Foreground" Value="#D6E2F2"/><Setter Property="Padding" Value="9,7"/><Setter Property="BorderThickness" Value="0"/></Style>
+         <Style x:Key="MacroCellText" TargetType="TextBlock"><Setter Property="Foreground" Value="#F1F5FB"/><Setter Property="Padding" Value="8,4"/></Style>
+        </DataGrid.Resources>
+        <DataGrid.Columns><DataGridTextColumn Header="按键" Binding="{Binding KeyName}" Width="*" IsReadOnly="True" ElementStyle="{StaticResource MacroCellText}"/><DataGridTextColumn Header="动作" Binding="{Binding ActionName}" Width="95" IsReadOnly="True" ElementStyle="{StaticResource MacroCellText}"/><DataGridTextColumn Header="之后延迟 / ms" Binding="{Binding DelayText,UpdateSourceTrigger=PropertyChanged}" Width="132" ElementStyle="{StaticResource MacroCellText}"/></DataGrid.Columns>
+       </DataGrid>
+       <WrapPanel Margin="0,9,0,10"><Button x:Name="MacroRecordButton" Content="{Binding Macros.RecordLabel}" Padding="13,8" FontSize="11" Margin="0,0,8,0"/><Button x:Name="MacroUpButton" Content="上移" Padding="11,8" FontSize="11" Margin="0,0,6,0"/><Button x:Name="MacroDownButton" Content="下移" Padding="11,8" FontSize="11" Margin="0,0,6,0"/><Button x:Name="MacroRemoveAction" Content="删除动作" Padding="11,8" FontSize="11" Margin="0,0,6,0"/><Button x:Name="MacroClearButton" Content="清空" Padding="11,8" FontSize="11"/></WrapPanel>
+       <TextBlock Text="手动插入动作" Style="{StaticResource Muted}" Margin="0,0,0,6"/>
+       <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="70"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <ComboBox x:Name="MacroKeyBox" ItemsSource="{Binding Macros.Keys}" SelectedItem="{Binding Macros.InsertKey}" DisplayMemberPath="Name" Margin="0,0,8,0" AutomationProperties.Name="插入按键"/>
+        <ComboBox x:Name="MacroInsertModeBox" Grid.Column="1" ItemsSource="{Binding Macros.InsertModes}" SelectedIndex="{Binding Macros.InsertMode}" Margin="0,0,8,0" AutomationProperties.Name="按下或松开"/>
+        <TextBox x:Name="MacroDelayBox" Grid.Column="2" Text="{Binding Macros.InsertDelay,UpdateSourceTrigger=PropertyChanged}" ToolTip="动作之后的延迟，单位 ms，0–10000 的偶数" Padding="8,11" AutomationProperties.Name="插入延迟毫秒"/>
+        <Button x:Name="MacroInsertButton" Grid.Column="3" Content="插入" Padding="12,8" FontSize="11" Margin="8,0,0,0"/>
+       </Grid>
+       <TextBlock Text="{Binding Macros.StepCount}" Style="{StaticResource Muted}" FontSize="11" Margin="0,8,0,0"/>
+       <TextBlock Text="{Binding Macros.Error}" Foreground="#FFBA9C" FontSize="11" LineHeight="19" Margin="0,5,0,5"/>
+       <TextBlock Text="应用默认配置第 1 组的完整按键方案，其他按键恢复标准功能。&#10;宏结束时须松开所有按键；长延迟也会占用鼠标存储空间。" Style="{StaticResource Muted}" FontSize="11" LineHeight="19"/>
+      </StackPanel>
+     </Grid>
           <Border x:Name="SettingsPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="32"><StackPanel MaxWidth="650" HorizontalAlignment="Left">
             <TextBlock Text="让它按你的习惯工作" FontSize="22" FontWeight="SemiBold"/>
             <TextBlock Text="新软件的设置独立保存，不影响原来的电量软件。" Style="{StaticResource Muted}" Margin="0,9,0,25"/>
@@ -156,7 +185,7 @@
           </StackPanel></Border>
           <Border x:Name="AboutPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="34"><StackPanel MaxWidth="650" HorizontalAlignment="Left">
             <TextBlock Text="GM GEAR" FontFamily="Segoe UI" FontSize="40" FontWeight="Bold" Foreground="#75DFFF"/><TextBlock Text="为 GM3323D 打造的独立外设控制中心" FontSize="16" Margin="0,10,0,25"/>
-            <TextBlock Text="v0.2.0 · Windows 桌面版" Style="{StaticResource Muted}"/>
+            <TextBlock Text="v0.3.0 · Windows 桌面版" Style="{StaticResource Muted}"/>
             <TextBlock Text="灯光和电量实现基于 Evan816Z / GM3323D-MouseLight，按 MIT 许可证二次开发。保留上游源码与版权声明，重做独立界面及 HID 适配层。" Foreground="#BAC5D6" Margin="0,25,0,14" LineHeight="25"/>
             <TextBlock Text="这是独立开发的鼠标控制软件，未与罗技或戴尔关联。" Style="{StaticResource Muted}" LineHeight="23"/>
             <Button x:Name="SourceButton" Content="查看上游项目  ↗" HorizontalAlignment="Left" Margin="0,28,0,0"/>

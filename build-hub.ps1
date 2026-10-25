@@ -6,7 +6,7 @@ $outDir = Join-Path $PSScriptRoot 'build\gear-hub'
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 $target = Join-Path $outDir 'GM-GearHub.exe'
 $argsList = @('/nologo','/optimize+','/platform:x64','/target:winexe',"/out:$target",'/codepage:65001',
-    '/r:System.dll','/r:System.Core.dll','/r:System.Drawing.dll','/r:System.Windows.Forms.dll',
+    '/r:System.dll','/r:System.Core.dll','/r:System.Drawing.dll','/r:System.Windows.Forms.dll','/r:System.Web.Extensions.dll',
     "/r:$frameworkDir\WPF\PresentationFramework.dll","/r:$frameworkDir\WPF\PresentationCore.dll",
     "/r:$frameworkDir\WPF\WindowsBase.dll","/r:$frameworkDir\System.Xaml.dll",
     "/resource:$PSScriptRoot\hub\MainWindow.xaml,GearHub.MainWindow.xaml",

@@ -22,12 +22,13 @@ namespace GearHub {
     public sealed class ViewModel : INotifyPropertyChanged {
         public event PropertyChangedEventHandler PropertyChanged;
         public SensitivityModel Sensitivity {get;private set;}
-        public ViewModel(){Sensitivity=new SensitivityModel();Sensitivity.PropertyChanged+=(s,e)=>{Notify("CanApply");};}
+        public MacroModel Macros {get;private set;}
+        public ViewModel(){Sensitivity=new SensitivityModel();Sensitivity.PropertyChanged+=(s,e)=>{Notify("CanApply");};Macros=new MacroModel();Macros.PropertyChanged+=(s,e)=>{Notify("CanApply");Notify("CanRestoreButtons");};}
         public Action DraftChanged;
         void Notify(string name) {var fn=PropertyChanged;if(fn!=null)fn(this,new PropertyChangedEventArgs(name));}
         public void All() {Notify("");}
         string header="你的设备",subhead="一个工作空间，掌控你的鼠标。",notice="正在检测 GM3323D 接收器…",connection="正在检测…",battery="—",draftStatus="预览未应用";
-        int? level;bool hasDevice,busy,enabled=true,dpiPage;int modeIndex;double brightness=8,hue=194;string color="#46D3FF";
+        int? level;bool hasDevice,busy,enabled=true,dpiPage,macroPage;int modeIndex;double brightness=8,hue=194;string color="#46D3FF";
         public string Header {get{return header;}set{header=value;Notify("Header");}}
         public string Subhead {get{return subhead;}set{subhead=value;Notify("Subhead");}}
         public string Notice {get{return notice;}set{notice=value;Notify("Notice");}}
@@ -35,13 +36,15 @@ namespace GearHub {
         public System.Windows.Media.Brush ConnectionBrush {get{return new SolidColorBrush(hasDevice?System.Windows.Media.Color.FromRgb(140,231,206):System.Windows.Media.Color.FromRgb(194,201,213));}}
         public string Battery {get{return battery;}}
         public double BatteryValue {get{return level.HasValue?level.Value:0;}}
-        public bool HasDevice {get{return hasDevice;}set{hasDevice=value;Notify("HasDevice");Notify("CanApply");Notify("CanApplyPolling");Notify("ConnectionBrush");}}
-        public bool Busy {get{return busy;}set{busy=value;Notify("CanApply");Notify("CanApplyPolling");Notify("CanEdit");Notify("ApplyLabel");}}
+        public bool HasDevice {get{return hasDevice;}set{hasDevice=value;Notify("HasDevice");Notify("CanApply");Notify("CanApplyPolling");Notify("CanRestoreButtons");Notify("ConnectionBrush");}}
+        public bool Busy {get{return busy;}set{busy=value;Notify("CanApply");Notify("CanApplyPolling");Notify("CanRestoreButtons");Notify("CanEdit");Notify("ApplyLabel");}}
         public bool CanEdit {get{return !busy;}}
         public bool DpiPage {get{return dpiPage;}set{dpiPage=value;Notify("CanApply");Notify("ApplyLabel");}}
-        public bool CanApply {get{return hasDevice&&!busy&&(dpiPage?Sensitivity.Valid:ValidColor);}}
+        public bool MacroPage {get{return macroPage;}set{macroPage=value;Notify("CanApply");Notify("ApplyLabel");}}
+        public bool CanApply {get{return hasDevice&&!busy&&(macroPage?Macros.CanApply:(dpiPage?Sensitivity.Valid:ValidColor));}}
+        public bool CanRestoreButtons {get{return hasDevice&&!busy&&!Macros.Recording;}}
         public bool CanApplyPolling {get{return hasDevice&&!busy;}}
-        public string ApplyLabel {get{return busy?"正在应用…":(dpiPage?"应用 DPI 方案":"应用到鼠标");}}
+        public string ApplyLabel {get{return busy?"正在应用…":(macroPage?"应用按键方案":(dpiPage?"应用 DPI 方案":"应用到鼠标"));}}
         public string DraftStatus {get{return draftStatus;}set{draftStatus=value;Notify("DraftStatus");}}
         public string[] Modes {get{return new[]{"固定色","呼吸","霓虹","循环呼吸","固定色 · 随 DPI","呼吸 · 随 DPI","流光","跑马灯"};}}
         void Dirty() {DraftStatus="预览未应用";if(DraftChanged!=null)DraftChanged();}
@@ -86,6 +89,8 @@ namespace GearHub {
         Forms.NotifyIcon tray;
         System.Drawing.Icon trayIcon;
         bool exiting,disposed;
+        readonly HashSet<byte> recordedKeys=new HashSet<byte>();
+        readonly Stopwatch recordClock=new Stopwatch();MacroDefinition recordTarget;
         DateTime operationUntil=DateTime.MinValue;
         readonly Dictionary<string,FrameworkElement> pages=new Dictionary<string,FrameworkElement>();
         readonly Dictionary<string,Button> nav=new Dictionary<string,Button>();
@@ -99,7 +104,7 @@ namespace GearHub {
             Window.Width=Math.Min(1180,SystemParameters.WorkArea.Width-48);
             Window.Height=Math.Min(800,SystemParameters.WorkArea.Height-48);
             Window.MinWidth=Math.Min(1040,Window.Width);Window.MinHeight=Math.Min(720,Window.Height);
-            foreach(string name in new[]{"Home","Lighting","Dpi","Pending","Settings","About"}) pages[name]=(FrameworkElement)Window.FindName(name+"Page");
+            foreach(string name in new[]{"Home","Lighting","Dpi","Buttons","Settings","About"}) pages[name]=(FrameworkElement)Window.FindName(name+"Page");
             foreach(string name in new[]{"Home","Lighting","Dpi","Buttons","Settings","About"}) {
                 string route=name;Button button=B("Nav"+name);nav[name]=button;button.Click+=(s,e)=>Route(route);
             }
@@ -110,14 +115,25 @@ namespace GearHub {
             ((FrameworkElement)Window.FindName("TitleDrag")).MouseLeftButtonDown+=(s,e)=>{if(e.ClickCount==2)B("WindowMax").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));else Window.DragMove();};
             B("MenuButton").Click+=(s,e)=>Route("Settings");
             B("FeatureDpi").Click+=(s,e)=>Route("Dpi");B("FeatureButtons").Click+=(s,e)=>Route("Buttons");
-            B("PendingBack").Click+=(s,e)=>Route("Home");
             B("HideButton").Click+=(s,e)=>Window.Hide();
             B("ExitButton").Click+=(s,e)=>Exit();
             B("RefreshButton").Click+=(s,e)=>{operationUntil=DateTime.UtcNow.AddSeconds(10);Model.Notice="正在重新检测，移动鼠标后会更新电量…";Model.SetBattery(null);};
-            B("ApplyButton").Click+=async(s,e)=>{if(Model.DpiPage)await ApplyDpi();else await Apply();};
+            B("ApplyButton").Click+=async(s,e)=>{if(Model.MacroPage)await ApplyMacros();else if(Model.DpiPage)await ApplyDpi();else await Apply();};
             B("ApplyPollingButton").Click+=async(s,e)=>await ApplyPolling();
-            B("SaveDraftButton").Click+=(s,e)=>{if(Model.DpiPage)SaveSensitivity();else SaveDraft();};
+            B("SaveDraftButton").Click+=(s,e)=>{if(Model.MacroPage)SaveMacros();else if(Model.DpiPage)SaveSensitivity();else SaveDraft();};
             B("DpiDefaultButton").Click+=(s,e)=>Model.Sensitivity.Load(new DpiScheme());
+            B("MacroNewButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.Add());
+            B("MacroDeleteButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.Remove());
+            B("MacroInsertButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.Insert());
+            B("MacroUpButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.Move(-1));
+            B("MacroDownButton").Click+=(s,e)=>MacroEdit(()=>Model.Macros.Move(1));
+            B("MacroRemoveAction").Click+=(s,e)=>MacroEdit(()=>Model.Macros.DeleteAction());
+            B("MacroClearButton").Click+=(s,e)=>MacroEdit(()=>{if(Model.Macros.Selected!=null)Model.Macros.Selected.Actions.Clear();});
+            B("MacroRecordButton").Click+=(s,e)=>{if(Model.Macros.Recording)StopRecording();else StartRecording();};
+            B("MacroRestoreButton").Click+=async(s,e)=>await RestoreButtons();
+            Window.PreviewKeyDown+=(s,e)=>RecordKey(e,true);Window.PreviewKeyUp+=(s,e)=>RecordKey(e,false);
+            Window.Deactivated+=(s,e)=>StopRecording();
+            Model.Macros.PropertyChanged+=(s,e)=>{if(e.PropertyName=="Selected"&&Model.Macros.Recording)StopRecording();};
             B("PickColor").Click+=(s,e)=>PickColor();
             B("SourceButton").Click+=(s,e)=>Process.Start(new ProcessStartInfo("https://github.com/Evan816Z/GM3323D-MouseLight") {UseShellExecute=true});
             foreach(string name in new[]{"Cyan","Purple","Pink","Orange","Green","White"}) B("Color"+name).Click+=(s,e)=>Model.ColorHex=(string)((Button)s).Tag;
@@ -161,20 +177,19 @@ namespace GearHub {
         }
         internal Button B(string name) {return (Button)Window.FindName(name);}
         internal void Route(string route) {
+            if(route!="Buttons")StopRecording();
             foreach(var page in pages.Values)page.Visibility=Visibility.Collapsed;
             foreach(var item in nav)item.Value.Tag=item.Key==route?"Active":null;
-            string pageName=route=="Buttons"?"Pending":route;Model.DpiPage=route=="Dpi";
+            string pageName=route;Model.DpiPage=route=="Dpi";Model.MacroPage=route=="Buttons";
             pages[pageName].Visibility=Visibility.Visible;
-            B("ApplyButton").Visibility=route=="Lighting"||route=="Dpi"?Visibility.Visible:Visibility.Collapsed;
-            B("SaveDraftButton").Visibility=route=="Lighting"||route=="Dpi"?Visibility.Visible:Visibility.Collapsed;
+            B("ApplyButton").Visibility=route=="Lighting"||route=="Dpi"||route=="Buttons"?Visibility.Visible:Visibility.Collapsed;
+            B("SaveDraftButton").Visibility=route=="Lighting"||route=="Dpi"||route=="Buttons"?Visibility.Visible:Visibility.Collapsed;
             ((FrameworkElement)Window.FindName("Sidebar")).Visibility=route=="Home"?Visibility.Collapsed:Visibility.Visible;
             if(route=="Home"){Model.Header="桌面";Model.Subhead="默认配置";}
             else if(route=="Lighting"){Model.Header="灯光效果";Model.Subhead="GM3323D  /  LIGHTING";}
             else if(route=="Dpi"){Model.Header="灵敏度 · DPI";Model.Subhead="GM3323D  /  SENSITIVITY";}
             else if(route=="Buttons") {
-                Model.Header="按键与宏";Model.Subhead="GM3323D  /  功能适配进度";
-                ((TextBlock)Window.FindName("PendingTitle")).Text="自定义操作正在适配";
-                ((TextBlock)Window.FindName("PendingDescription")).Text="按键重映射和宏尚未确认兼容，当前版本不提供写入。";
+                Model.Header="按键与宏";Model.Subhead="GM3323D  /  ASSIGNMENTS";
             } else if(route=="Settings"){Model.Header="偏好设置";Model.Subhead="仅作用于 GM GEAR";}
             else {Model.Header="关于";Model.Subhead="独立项目  /  开源协议";}
             Window.Dispatcher.BeginInvoke(new Action(UpdateArtwork),System.Windows.Threading.DispatcherPriority.Loaded);
@@ -224,10 +239,10 @@ namespace GearHub {
               catch(Exception ex){Model.Notice=ex.Message;}
             finally {operationUntil=DateTime.UtcNow.AddSeconds(20);Model.Busy=false;}
         }
-        async Task<bool> SendSetting(Action<IFeatureSession,CancellationToken> send){
+        async Task<bool> SendSetting(Action<IFeatureSession,CancellationToken> send,int timeout=3500){
             Model.Busy=true;
             try{
-                using(var cancel=new CancellationTokenSource(3500)){
+                using(var cancel=new CancellationTokenSource(timeout)){
                     await Task.Run(()=>{using(var session=new FeatureSession())using(cancel.Token.Register(session.Cancel))send(session,cancel.Token);});
                 }
                 return true;
@@ -249,6 +264,52 @@ namespace GearHub {
             if(!Model.CanApplyPolling)return;
             int rate=Model.Sensitivity.PollingRate;Model.Notice="正在应用回报率…";
             if(await SendSetting((session,cancel)=>Protocol.ApplyPolling(session,rate,cancel))){Model.Sensitivity.RateStatus="已发送 "+rate+" Hz";Model.Notice="已发送 "+rate+" Hz 回报率。";}
+        }
+        void MacroEdit(Action edit){StopRecording();try{edit();Model.Notice="本机宏草稿已修改；应用后才更改鼠标。";}catch(Exception ex){Model.Notice=ex.Message;}operationUntil=DateTime.UtcNow.AddSeconds(20);}
+        void StartRecording(){
+            if(Model.Macros.Selected==null||Model.Busy)return;
+            recordTarget=Model.Macros.Selected;recordedKeys.Clear();recordClock.Restart();Model.Macros.Recording=true;
+            Model.Notice="正在本窗口录制键盘；Esc 或失去焦点时停止。";operationUntil=DateTime.UtcNow.AddMinutes(5);
+            System.Windows.Input.Keyboard.ClearFocus();Window.Focus();
+        }
+        void StopRecording(){
+            if(!Model.Macros.Recording)return;
+            foreach(byte code in recordedKeys)if(recordTarget.Actions.Count<50)recordTarget.Actions.Add(new MacroAction {Code=code,Down=false,DelayText="50"});
+            recordedKeys.Clear();recordTarget=null;recordClock.Stop();Model.Macros.Recording=false;
+            Model.Notice="录制已停止；请检查动作，再选择触发键。";operationUntil=DateTime.UtcNow.AddSeconds(20);
+        }
+        void RecordKey(System.Windows.Input.KeyEventArgs e,bool down){
+            if(!Model.Macros.Recording)return;e.Handled=true;
+            var key=e.Key==System.Windows.Input.Key.System?e.SystemKey:e.Key;
+            if(key==System.Windows.Input.Key.Escape){if(down)StopRecording();return;}
+            byte? code=MacroKeys.FromWpf(key);if(!code.HasValue)return;
+            if(down&&recordedKeys.Contains(code.Value))return;
+            if(!down&&!recordedKeys.Contains(code.Value))return;
+            if(down&&recordTarget.Actions.Count+recordedKeys.Count+2>50){StopRecording();return;}
+            if(recordTarget.Actions.Count>0)recordTarget.Actions[recordTarget.Actions.Count-1].DelayText=(Math.Min(10000,(int)Math.Round(recordClock.Elapsed.TotalMilliseconds/2)*2)).ToString();
+            if(down)recordedKeys.Add(code.Value);else recordedKeys.Remove(code.Value);
+            recordTarget.Actions.Add(new MacroAction {Code=code.Value,Down=down,DelayText="50"});recordClock.Restart();
+        }
+        async Task ApplyMacros(){
+            StopRecording();if(Preview){Model.Notice="界面预览不会写入设备。";return;}
+            if(!Model.CanApply)return;
+            var plan=Model.Macros.Snapshot();Model.Notice="正在写入宏与按键方案…";
+            if(await SendSetting((session,cancel)=>MacroProtocol.Apply(session,plan,cancel),8000)){
+                Model.Macros.Status="方案已发送";Model.Notice="宏与按键方案已发送；实际触发效果请在目标程序中验证。";
+            }
+        }
+        async Task RestoreButtons(){
+            StopRecording();if(Preview){Model.Notice="界面预览不会写入设备。";return;}
+            if(!Model.CanRestoreButtons)return;Model.Notice="正在恢复默认按键…";
+            if(await SendSetting((session,cancel)=>MacroProtocol.Restore(session,cancel))){
+                foreach(var macro in Model.Macros.Library)macro.TargetIndex=0;
+                Model.Macros.Status="已发送默认按键";Model.Notice="默认按键方案已发送，已解除本机宏方案的绑定。";
+            }
+        }
+        void SaveMacros(){
+            StopRecording();operationUntil=DateTime.UtcNow.AddSeconds(20);
+            if(Preview){Model.Notice="界面预览不会保存设置。";return;}
+            try{MacroStorage.Save(MacroStorage.DefaultPath,Model.Macros.Library);Model.Macros.Status="本机已保存 · 不自动应用";Model.Notice="宏草稿已保存到本机，不会自动绑定或运行。";}catch(Exception ex){Model.Notice="保存失败："+ex.Message;}
         }
         void SaveSensitivity(){
             operationUntil=DateTime.UtcNow.AddSeconds(15);
@@ -276,6 +337,8 @@ namespace GearHub {
             } catch(Exception ex){Model.Notice="保存失败："+ex.Message;}
         }
         void LoadDraft() {
+            try{if(File.Exists(MacroStorage.DefaultPath))Model.Macros.Replace(MacroStorage.Load(MacroStorage.DefaultPath));}
+            catch(Exception){Model.Macros.Status="本机宏文件不可读；原文件未修改";}
             try{using(var key=Registry.CurrentUser.OpenSubKey(RegistryPath+@"\Sensitivity")){
                 if(key!=null){
                     string[] saved=Convert.ToString(key.GetValue("values","")).Split(',');
@@ -344,7 +407,7 @@ namespace GearHub {
         }
         internal void Show() {Window.Show();Window.WindowState=WindowState.Normal;Window.Activate();}
         internal void Exit() {exiting=true;Window.Close();}
-        public void Dispose() {if(disposed)return;disposed=true;monitor.Dispose();if(tray!=null){tray.Visible=false;tray.ContextMenuStrip.Dispose();tray.Dispose();}if(trayIcon!=null)trayIcon.Dispose();}
+        public void Dispose() {if(disposed)return;StopRecording();disposed=true;monitor.Dispose();if(tray!=null){tray.Visible=false;tray.ContextMenuStrip.Dispose();tray.Dispose();}if(trayIcon!=null)trayIcon.Dispose();}
         [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr h);
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h,int a,ref int value,int size);
         [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int RegisterWindowMessage(string name);
@@ -364,6 +427,7 @@ namespace GearHub {
                 try {using(var hub=new Hub(false)) {
                     app.MainWindow=hub.Window;
                     if(Array.IndexOf(args,"--dpi")>=0)hub.Route("Dpi");
+                    if(Array.IndexOf(args,"--macros")>=0)hub.Route("Buttons");
                     if(Array.IndexOf(args,"--tray")<0)hub.Window.Show();
                     else {var handle=new WindowInteropHelper(hub.Window).EnsureHandle();}
                     return app.Run();

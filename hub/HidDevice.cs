@@ -86,7 +86,9 @@ namespace GearHub {
             thread=Native.OpenThread(1,false,Native.GetCurrentThreadId());
         }
         public bool Write(byte[] bytes) {
-            if(bytes==null||!((bytes.Length==13&&bytes[0]==5&&bytes[1]==13)||(bytes.Length==50&&bytes[0]==4&&bytes[1]==50)||(bytes.Length==9&&bytes[0]==6&&bytes[1]==9)||(bytes.Length==4&&bytes[0]==12&&bytes[1]==4&&bytes[3]==5))||bytes[2]!=1)
+            bool macro=bytes!=null&&bytes.Length==129&&bytes[0]==9&&bytes[1]==129&&bytes[2]>=4&&bytes[2]<=6;
+            bool profile=bytes!=null&&((bytes.Length==13&&bytes[0]==5&&bytes[1]==13)||(bytes.Length==50&&bytes[0]==4&&bytes[1]==50)||(bytes.Length==9&&bytes[0]==6&&bytes[1]==9)||(bytes.Length==4&&bytes[0]==12&&bytes[1]==4&&bytes[3]==5)||(bytes.Length==77&&bytes[0]==8&&bytes[1]==77))&&bytes[2]==1;
+            if(!macro&&!profile)
                 throw new ArgumentException("设备设置指令格式不正确。");
             if(Native.HidD_SetFeature(handle,bytes,bytes.Length))return true;
             int error=Marshal.GetLastWin32Error();
