@@ -25,7 +25,7 @@ namespace GearHub {
         void Notify(string name) {var fn=PropertyChanged;if(fn!=null)fn(this,new PropertyChangedEventArgs(name));}
         public void All() {Notify("");}
         string header="你的设备",subhead="一个工作空间，掌控你的鼠标。",notice="正在检测 GM3323D 接收器…",connection="正在检测…",battery="—",draftStatus="预览未应用";
-        int? level;bool hasDevice,busy,enabled=true,prefix;int modeIndex;double brightness=8,hue=194;string color="#46D3FF";
+        int? level;bool hasDevice,busy,enabled=true;int modeIndex;double brightness=8,hue=194;string color="#46D3FF";
         public string Header {get{return header;}set{header=value;Notify("Header");}}
         public string Subhead {get{return subhead;}set{subhead=value;Notify("Subhead");}}
         public string Notice {get{return notice;}set{notice=value;Notify("Notice");}}
@@ -45,7 +45,6 @@ namespace GearHub {
         public double Brightness {get{return brightness;}set{brightness=Math.Max(1,Math.Min(8,Math.Round(value)));Notify("Brightness");Notify("BrightnessLabel");Dirty();}}
         public string BrightnessLabel {get{return ((int)brightness)+" / 8";}}
         public bool LightEnabled {get{return enabled;}set{enabled=value;Notify("LightEnabled");Notify("PreviewBrush");Dirty();}}
-        public bool PrefixFormat {get{return prefix;}set{prefix=value;Notify("PrefixFormat");Dirty();}}
         public string ColorHex {get{return color;}set{
             color=value??"";
             if(ValidColor){var c=System.Drawing.ColorTranslator.FromHtml(color);if(c.R!=c.G||c.G!=c.B){hue=c.GetHue();Notify("Hue");Notify("HueBrush");}}
@@ -71,7 +70,7 @@ namespace GearHub {
         public Lighting Draft() {
             if(!ValidColor)throw new ArgumentException("请输入 #RRGGBB 格式的颜色。");
             var c=(System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color);
-            return new Lighting {Mode=modeIndex+1,Brightness=(int)brightness,Enabled=enabled,ReportIdPrefix=prefix,R=c.R,G=c.G,B=c.B};
+            return new Lighting {Mode=modeIndex+1,Brightness=(int)brightness,Enabled=enabled,R=c.R,G=c.G,B=c.B};
         }
     }
 
@@ -201,7 +200,7 @@ namespace GearHub {
         async Task Apply() {
             if(Preview){Model.Notice="界面预览不会写入设备。";return;}
             if(!Model.CanApply)return;
-            Lighting draft=Model.Draft();Model.Busy=true;Model.Notice="正在读取当前配置并应用灯光…";
+            Lighting draft=Model.Draft();Model.Busy=true;Model.Notice="正在应用鼠标灯光…";
             try {
                 using(var cancel=new CancellationTokenSource(3500)) {
                     await Task.Run(()=>{
@@ -222,7 +221,7 @@ namespace GearHub {
                 Lighting d=Model.Draft();
                 using(var key=Registry.CurrentUser.CreateSubKey(RegistryPath)) {
                     key.SetValue("mode",d.Mode);key.SetValue("brightness",d.Brightness);key.SetValue("color",d.Hex);
-                    key.SetValue("enabled",d.Enabled?1:0);key.SetValue("prefix",d.ReportIdPrefix?1:0);
+                    key.SetValue("enabled",d.Enabled?1:0);
                 }
                 Model.DraftStatus="本机已保存";Model.Notice="草稿已保存到本机；启动时不会自动应用到鼠标。";
             } catch(Exception ex){Model.Notice="保存失败："+ex.Message;}
@@ -234,7 +233,7 @@ namespace GearHub {
                 Model.Brightness=Convert.ToInt32(key.GetValue("brightness",8));
                 Model.ColorHex=Convert.ToString(key.GetValue("color","#46D3FF"));
                 if(!Model.ValidColor)Model.ColorHex="#46D3FF";
-                Model.LightEnabled=Convert.ToInt32(key.GetValue("enabled",1))!=0;Model.PrefixFormat=Convert.ToInt32(key.GetValue("prefix",0))!=0;
+                Model.LightEnabled=Convert.ToInt32(key.GetValue("enabled",1))!=0;
                 Model.DraftStatus="本机草稿";
             }}catch(Exception){Model.Notice="本机草稿不可读，已使用默认预览。";}
         }

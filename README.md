@@ -2,7 +2,7 @@
 
 面向 **GM3323D** 的独立 Windows 鼠标控制软件。按经典 G HUB 的交互布局制作：居中设备主页、顶部桌面配置栏、左侧功能图标栏、灯光面板与设备颜色预览。使用独立名称与参考实物制作的鼠标图，不与罗技或戴尔关联。
 
-基于 [Evan816Z/GM3323D-MouseLight](https://github.com/Evan816Z/GM3323D-MouseLight) 二次开发，复用并移植其原生 HID 枚举、132 字节灯光配置及电量监听方案，保留 MIT 许可证和上游 C++ 源码。原来的电量查看器不需要卸载，也不会被新软件替换。
+基于 [Evan816Z/GM3323D-MouseLight](https://github.com/Evan816Z/GM3323D-MouseLight) 二次开发，复用并移植其原生 HID 枚举与电量监听方案，保留 MIT 许可证和上游 C++ 源码。灯光通讯已更正为实机确认有效的 13 字节独立指令。原来的电量查看器不需要卸载，也不会被新软件替换。
 
 ## 当前功能
 
@@ -22,7 +22,7 @@
 3. 在主页点击鼠标，打开灯光配置。
 4. 先预览颜色和亮度，准备好后点击“应用到鼠标”。
 
-若未读到有效的当前配置，程序会拒绝写入并提示重试；不会套用作者的设备模板。是否接受写入以界面反馈为准，实际灯光变化仍需在设备上确认。
+v0.1.1 修复了灯光无法应用的问题。青色常亮已在实际 GM3323D 上确认生效；界面“已发送”表示系统接受指令，设备实际效果以鼠标为准。
 
 右下角托盘双击可显示主窗口，右键可退出。首次出现的图标可能被 Windows 放进折叠区。DPI 等功能仍需原厂软件。
 
@@ -30,8 +30,9 @@
 
 - 前端使用 WPF，硬件层由上游 C++ HID 代码移植为 C# P/Invoke；原 `src/main.cpp` 保持可读。
 - 写入需匹配产品名 GM3323D、VID/PID `1D57:FA60`、UsagePage `000B` 和精确 132 字节 Feature 长度，防止仅凭共享编号匹配其它品牌鼠标。
-- 移除“读失败后回写默认模板”和启动自动应用；只修改当前配置中的模式、亮度、R/G/B 五个字段。
-- 读写放在后台，带取消期限，取消后不会因为迟到的配置读取而继续写入。
+- 灯光发送独立的 13 字节 `0x05` 报告，不再轮询 `GetFeature(0x04)`，也不回写 132 字节模板。132 是集合支持的最大 Feature 长度，不是灯光指令长度。
+- 灯光命令仅包含灯效参数，不发送 DPI、按键或宏。效果速度暂使用固定默认值；启动和重连不自动应用。
+- 发送放在后台，带取消期限与系统错误提示。
 - 电量验证完整事件类型、在线状态和档位范围。`03 00 40 01 08` 表示 80%，不把 `0x40` 当电压，也不把在线字节推断为充电状态。
 - 鼠标仍以 10% 档位上报，界面不估算 81%、82% 等中间值。
 
@@ -46,7 +47,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File build-hub.ps1 -Tests
 
 使用系统 .NET Framework C# 编译器和 WPF，无 NuGet 依赖；输出 `build/gear-hub/GM-GearHub.exe`。UI 测试使用明确标注的示例数据，不访问设备或修改开机设置。`--probe` 只读枚举接口并监听真实电量，不发送灯光设置。
 
-截至首版：30 项协议与 UI 检查通过，实机接口枚举通过，使用新的原生监听器读到 90% 电量；灯光写入结果仍需设备确认。详细验证状态见 [VALIDATION.md](docs/VALIDATION.md)。
+v0.1.1：24 项协议与 UI 检查通过，实机“应用到鼠标”按钮发送通过，青色常亮得到用户目视确认；原生监听器读到 90% 实时电量。详细验证状态见 [VALIDATION.md](docs/VALIDATION.md)。
 
 ## 界面预览
 
@@ -57,7 +58,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File build-hub.ps1 -Tests
 
 鼠标素材生成与校正说明见 [ARTWORK.md](docs/ARTWORK.md)。
 
-上游原说明见 [UPSTREAM_README.md](docs/UPSTREAM_README.md)，原协议记录见 [protocol.md](docs/protocol.md)。本仓库保留其不确定性，不把上游单点观察当作全部固件的保证。
+当前灯光协议见 [LIGHTING_PROTOCOL.md](docs/LIGHTING_PROTOCOL.md)。上游原说明见 [UPSTREAM_README.md](docs/UPSTREAM_README.md)，历史协议记录见 [protocol.md](docs/protocol.md)；其中 132 字节配置轮询与回写结论已被本机验证纠正。
 
 ## 许可证
 

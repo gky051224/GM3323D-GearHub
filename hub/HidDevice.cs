@@ -21,7 +21,6 @@ namespace GearHub {
         [DllImport("hid.dll")] [return:MarshalAs(UnmanagedType.U1)] internal static extern bool HidD_GetPreparsedData(SafeFileHandle h,out IntPtr data);
         [DllImport("hid.dll")] [return:MarshalAs(UnmanagedType.U1)] internal static extern bool HidD_FreePreparsedData(IntPtr data);
         [DllImport("hid.dll")] internal static extern int HidP_GetCaps(IntPtr data,out Caps caps);
-        [DllImport("hid.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.U1)] internal static extern bool HidD_GetFeature(SafeFileHandle h,byte[] data,int length);
         [DllImport("hid.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.U1)] internal static extern bool HidD_SetFeature(SafeFileHandle h,byte[] data,int length);
         [DllImport("setupapi.dll",CharSet=CharSet.Unicode,SetLastError=true)] internal static extern IntPtr SetupDiGetClassDevs(ref Guid guid,IntPtr enumerator,IntPtr hwnd,uint flags);
         [DllImport("setupapi.dll",SetLastError=true)] internal static extern bool SetupDiEnumDeviceInterfaces(IntPtr list,IntPtr dev,ref Guid guid,uint index,ref InterfaceData data);
@@ -86,8 +85,13 @@ namespace GearHub {
             if (handle.IsInvalid) throw new InvalidOperationException("灯光接口暂不可用，请关闭原厂设置窗口后重试。");
             thread=Native.OpenThread(1,false,Native.GetCurrentThreadId());
         }
-        public byte[] Read() {var bytes=new byte[132];bytes[0]=4;return Native.HidD_GetFeature(handle,bytes,132)?bytes:null;}
-        public bool Write(byte[] bytes) {return Native.HidD_SetFeature(handle,bytes,bytes.Length);}
+        public bool Write(byte[] bytes) {
+            if(bytes==null||bytes.Length!=13||bytes[0]!=5||bytes[1]!=13)
+                throw new ArgumentException("灯光指令格式不正确。");
+            if(Native.HidD_SetFeature(handle,bytes,bytes.Length))return true;
+            int error=Marshal.GetLastWin32Error();
+            throw new InvalidOperationException("灯光发送失败（错误 "+error+"），请唤醒鼠标后重试。");
+        }
         public void Cancel() {if (thread!=IntPtr.Zero) Native.CancelSynchronousIo(thread);}
         public void Dispose() {handle.Dispose();if(thread!=IntPtr.Zero)Native.CloseHandle(thread);}
     }

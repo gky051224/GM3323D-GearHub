@@ -115,16 +115,13 @@
             <TextBlock Text="新软件的设置独立保存，不影响原来的电量软件。" Style="{StaticResource Muted}" Margin="0,9,0,25"/>
             <CheckBox x:Name="AutostartCheck" Content="开机启动 GM GEAR"/>
             <CheckBox x:Name="CloseToTray" Content="关闭主窗口时收起到托盘" IsChecked="True"/>
-            <TextBlock Text="兼容设置" FontSize="16" Margin="0,30,0,10"/>
-            <CheckBox x:Name="PrefixCheck" Content="使用报告 ID 前缀写入格式" IsChecked="{Binding PrefixFormat}"/>
-            <TextBlock Text="默认关闭。只有设备拒绝默认格式时才需要切换；切换后仍需点击应用。" Style="{StaticResource Muted}" LineHeight="22" Margin="0,4,0,20"/>
             <TextBlock Text="电量与运行方式" FontSize="16" Margin="0,12,0,12"/>
             <TextBlock Text="鼠标电量按接收器的 10% 档位显示，不估算中间值。&#10;电量在后台持续监听，断开后清除旧读数。&#10;不保存电量历史；启动与重连不会自动更改灯光。" Foreground="#B9C3D2" LineHeight="25"/>
             <Button x:Name="ExitButton" Content="退出 GM GEAR" HorizontalAlignment="Left" Margin="0,30,0,0"/>
           </StackPanel></Border>
           <Border x:Name="AboutPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="34"><StackPanel MaxWidth="650" HorizontalAlignment="Left">
             <TextBlock Text="GM GEAR" FontFamily="Segoe UI" FontSize="40" FontWeight="Bold" Foreground="#75DFFF"/><TextBlock Text="为 GM3323D 打造的独立外设控制中心" FontSize="16" Margin="0,10,0,25"/>
-            <TextBlock Text="v0.1 · Windows 桌面版" Style="{StaticResource Muted}"/>
+            <TextBlock Text="v0.1.1 · Windows 桌面版" Style="{StaticResource Muted}"/>
             <TextBlock Text="灯光和电量实现基于 Evan816Z / GM3323D-MouseLight，按 MIT 许可证二次开发。保留上游源码与版权声明，重做独立界面及 HID 适配层。" Foreground="#BAC5D6" Margin="0,25,0,14" LineHeight="25"/>
             <TextBlock Text="这是独立开发的鼠标控制软件，未与罗技或戴尔关联。" Style="{StaticResource Muted}" LineHeight="23"/>
             <Button x:Name="SourceButton" Content="查看上游项目  ↗" HorizontalAlignment="Left" Margin="0,28,0,0"/>
