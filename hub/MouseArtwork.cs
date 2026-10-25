@@ -13,7 +13,21 @@ namespace GearHub {
         static ImageSource image;
         public static ImageSource Image {get {
             if(image==null)using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("GearHub.MouseProduct")){
-                var bitmap=BitmapFrame.Create(stream,BitmapCreateOptions.None,BitmapCacheOption.OnLoad);bitmap.Freeze();image=bitmap;
+                var bitmap=BitmapFrame.Create(stream,BitmapCreateOptions.None,BitmapCacheOption.OnLoad);
+                // Fit the actual product rather than relying on offsets from a previous render.
+                // Crop only in WPF memory; the original PNG and its alpha remain unchanged.
+                var rgba=new FormatConvertedBitmap(bitmap,PixelFormats.Bgra32,null,0);
+                int width=rgba.PixelWidth,height=rgba.PixelHeight,stride=width*4;
+                byte[] pixels=new byte[stride*height];rgba.CopyPixels(pixels,stride,0);
+                int left=width,top=height,right=-1,bottom=-1;
+                for(int y=0;y<height;y++)for(int x=0;x<width;x++){
+                    if(pixels[y*stride+x*4+3]<16)continue;
+                    left=Math.Min(left,x);top=Math.Min(top,y);right=Math.Max(right,x);bottom=Math.Max(bottom,y);
+                }
+                if(right>=left&&bottom>=top){
+                    left=Math.Max(0,left-8);top=Math.Max(0,top-8);right=Math.Min(width-1,right+8);bottom=Math.Min(height-1,bottom+8);
+                    var cropped=new CroppedBitmap(bitmap,new Int32Rect(left,top,right-left+1,bottom-top+1));cropped.Freeze();image=cropped;
+                }else{bitmap.Freeze();image=bitmap;}
             }
             return image;
         }}
@@ -38,7 +52,7 @@ float power : register(c1);
 float4 main(float2 uv : TEXCOORD) : COLOR {
     float4 p=tex2D(image,uv);
     float3 rgb=p.rgb/max(p.a,0.0001);
-    float mask=smoothstep(0.55,0.9,min(rgb.r,min(rgb.g,rgb.b)));
+    float mask=step(0.55,uv.y)*smoothstep(0.55,0.9,min(rgb.r,min(rgb.g,rgb.b)));
     float3 output=lerp(rgb,rgb*tint.rgb*power,mask);
     return float4(output*p.a,p.a);
 }";

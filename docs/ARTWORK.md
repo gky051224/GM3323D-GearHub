@@ -1,8 +1,21 @@
 # 鼠标素材
 
-最终素材：`hub/resources/mouse-product.png`，已内嵌到 `GM-GearHub.exe`。参考用户提供的 GM3323D 实物照片，用内置 image_gen（imagegen skill）生成透明背景产品图，然后按反馈摆正掌心标志。不是厂商官方渲染图，可能存在细节偏差。
+最终素材：`hub/resources/mouse-product.png`，已内嵌到 `GM-GearHub.exe`。**v0.1.2 按用户新提供的俯视、左侧、右侧三张实拍重做**，替换早期方向错误的示意图。使用内置 image_gen（imagegen skill），不是厂商官方渲染图，仍可能有细节偏差。原始私人照片不随仓库或软件分发。
 
-保留实际外形、滚轮、DPI 按钮和侧键；尾部灯带和掌心标志为中性白，软件运行时只对高亮灯光区域着色。源 PNG 的 alpha 保持不变；界面中的裁切、大小和颜色预览在 WPF 渲染层完成，不改写素材。
+修正横向、开口向右的掌心标志，保留滚轮人字纹、小 DPI 键、左侧双侧键及细长外形。尾部灯带位于下沿侧面，俯视只显示少量侧边光，不再画成外壳上的明亮 U 形边框。PNG 为 1254×1254 RGBA，透明通道保留；软件在 WPF 内存里按有效透明边界适配比例，鼠标不再依赖旧素材的固定偏移。灯光着色仅作用于下半部高亮区域，滚轮和前部按键保留原色。
+
+## v0.1.2 最终提示词（内置工具）
+
+Use case: precise-object-edit / product-mockup.
+Asset type: replacement product cutout inside a Windows GM3323D mouse configuration app.
+Input images: image 1 (top photograph, d828dc63...) is the PRIMARY edit target and exact identity reference. Images 2 and 3 are supporting right/left side photographs of that exact same mouse.
+Primary request: isolate and clean up the actual mouse from the primary photograph into one photorealistic studio product PNG. Remove the blue desk, hand, pen, containers, and every background object. Correct the small overall perspective/roll so the scroll wheel points straight up and the rear points straight down, centered with the complete mouse visible. Preserve the actual long black silhouette, shell curvature, front button seams, chevron-pattern rubber wheel, small narrow DPI button behind it, and the two compact trapezoid side buttons on its LEFT side. Do not substitute another gaming mouse.
+CRITICAL LOGO: reproduce the real palm mark exactly as in the primary photograph, a HORIZONTAL stylized G-like angular symbol open toward the RIGHT. Its top and lower strokes run LEFT TO RIGHT across the palm. The curved part is on the LEFT, and the short inner horizontal stroke and squared ends are on the RIGHT. Its width is greater than its height. Do NOT rotate that logo into an upright arch, a lowercase n, or headphone shape. Preserve the logo's orientation relative to the mouse exactly as photographed.
+CRITICAL LED PLACEMENT: the side photographs show a thin light strip under the rear lower edge ONLY, ending around the rear third of each side. The primary TOP view does NOT show a bright U-shaped outline around the upper palm shell. Keep the top silhouette plain black, with only a subtle thin glimpse of neutral-white light at the LOWER SIDE edges near the tail. Do NOT invent a bright continuous U rim drawn on top of the mouse or a front/perimeter strip.
+Materials and lighting: clean matte/satin black plastic with gentle neutral studio highlights, remove dirt and fingerprints without redesigning shapes. The palm logo and subtle rear side strip should emit neutral WHITE for runtime RGB tinting. No blue cast across the shell, no giant glow, no ground reflection or cast shadow.
+Composition: straight nearly orthographic top view matching the primary photograph, product vertical with zero yaw, entire mouse centered, roughly 80% canvas height, square canvas with comfortable transparent breathing room. Real transparent alpha background, no checkerboard, no black backdrop baked in, no captions, no watermarks. This is an accurate reference-based correction, NOT a redesign.
+
+## 历史记录（以下为已替换的旧图提示词）
 
 ## 生成提示词
 

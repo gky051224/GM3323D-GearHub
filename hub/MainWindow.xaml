@@ -36,7 +36,7 @@
     <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#E1E7F0"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="Margin" Value="0,8"/></Style>
     <ControlTemplate x:Key="MouseArt" TargetType="ContentControl">
       <Viewbox Stretch="Uniform"><Grid Width="760" Height="1150" ClipToBounds="True">
-        <Image Tag="ProductImage" Source="{Binding MouseImage}" Width="1280" Height="1280" Margin="-260,-60,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" RenderOptions.BitmapScalingMode="HighQuality"/>
+        <Image Tag="ProductImage" Source="{Binding MouseImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
       </Grid></Viewbox>
     </ControlTemplate>
     <Style TargetType="ListBoxItem">
@@ -121,7 +121,7 @@
           </StackPanel></Border>
           <Border x:Name="AboutPage" Visibility="Collapsed" Background="#23262E" CornerRadius="14" Padding="34"><StackPanel MaxWidth="650" HorizontalAlignment="Left">
             <TextBlock Text="GM GEAR" FontFamily="Segoe UI" FontSize="40" FontWeight="Bold" Foreground="#75DFFF"/><TextBlock Text="为 GM3323D 打造的独立外设控制中心" FontSize="16" Margin="0,10,0,25"/>
-            <TextBlock Text="v0.1.1 · Windows 桌面版" Style="{StaticResource Muted}"/>
+            <TextBlock Text="v0.1.2 · Windows 桌面版" Style="{StaticResource Muted}"/>
             <TextBlock Text="灯光和电量实现基于 Evan816Z / GM3323D-MouseLight，按 MIT 许可证二次开发。保留上游源码与版权声明，重做独立界面及 HID 适配层。" Foreground="#BAC5D6" Margin="0,25,0,14" LineHeight="25"/>
             <TextBlock Text="这是独立开发的鼠标控制软件，未与罗技或戴尔关联。" Style="{StaticResource Muted}" LineHeight="23"/>
             <Button x:Name="SourceButton" Content="查看上游项目  ↗" HorizontalAlignment="Left" Margin="0,28,0,0"/>
